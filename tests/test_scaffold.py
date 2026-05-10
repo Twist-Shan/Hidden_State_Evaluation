@@ -1,7 +1,7 @@
 def test_package_imports():
     import hse
 
-    assert hse.__all__ == ["analysis", "models", "tasks", "utils"]
+    assert hse.__all__ == ["analysis", "experiments", "models", "tasks", "utils"]
 
 
 def test_dyck_sampler_and_rnn_smoke():

@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
-
 DEFAULT_MODEL_SPECS = {
     "rnn": {"layers": 3, "emb_dim": 128, "hidden_dim": 256, "state_kind": "h"},
     "lstm": {"layers": 3, "emb_dim": 128, "hidden_dim": 128, "state_kind": "c"},
@@ -22,6 +19,8 @@ DEFAULT_MODEL_SPECS = {
 
 
 def load_yaml(path: str | Path) -> dict:
+    import yaml
+
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
