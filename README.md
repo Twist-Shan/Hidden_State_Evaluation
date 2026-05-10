@@ -1,144 +1,163 @@
 # Hidden State Evaluation
 
-This project studies whether model hidden states contain linearly decodable sufficient statistics for sequence tasks, and whether different architectures compress historical context in different ways.
+This repo studies whether hidden states encode task-relevant sufficient statistics, and whether different architectures preserve useful information while forgetting irrelevant prefix details. The current runnable entry point starts from the Dyck task and follows a fixed pipeline:
 
-The experimental layout follows the style of `mini-ICL-main`: task modules live under `src/`, scripts provide reproducible entry points, notebooks are used for exploration, and `results/` stores generated checkpoints, probes, metrics, and figures.
+`train -> extract hidden states -> run probes -> inspect geometry/compression`
 
-## Research Questions
+The two reference documents are:
 
-- Do RNN, LSTM, Transformer, and Mamba hidden states contain task-relevant sufficient statistics?
-- Are those statistics linearly decodable from a hidden direction or subspace?
-- Do models preserve task-relevant information while discarding irrelevant prefix details?
-- How does compression behavior differ between recurrent models, attention models, and state-space models?
+- [experiment_pipeline_plan.md](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/experiment_pipeline_plan.md)
+- [docs/codex_conversation_summary.md](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/docs/codex_conversation_summary.md)
 
-## Task Families
+## Start Here
 
-| Task | Module | Current Role |
-|---|---|---|
-| Dyck | `hse.tasks.dyck` | Main controlled counting task |
-| Shuffle Dyck | `hse.tasks.shuffle_dyck` | Multi-counter bracket task |
-| Resettable Counter | `hse.tasks.markov` | Placeholder for finite-state sufficient statistics |
-| HMM / Markov | `hse.tasks.markov` | Placeholder for latent-state and posterior probes |
-| Needle in a Haystack | `hse.tasks.needle` | Placeholder for realistic retrieval/compression tests |
-
-## Project Structure
-
-```text
-Hidden State Evaluation/
-|-- src/hse/
-|   |-- models/                  # RNN, LSTM, Transformer, Mamba model wrappers
-|   |-- tasks/
-|   |   |-- dyck/                # Dyck samplers, labels, metrics
-|   |   |-- shuffle_dyck/        # Interleaved multi-bracket task
-|   |   |-- markov/              # Counter, HMM, variable-order Markov tasks
-|   |   `-- needle/              # Needle-in-a-haystack retrieval tasks
-|   |-- analysis/
-|   |   |-- probes/              # Ridge/logistic probes for hidden states
-|   |   |-- geometry/            # Direction alignment, PCA, subspace analysis
-|   |   |-- compression/         # Relevant retention and irrelevant forgetting scores
-|   |   `-- visualization/       # Probe plots and trajectory figures
-|   `-- utils/                   # Training, extraction, config, IO helpers
-|-- configs/                     # Reproducible experiment configs
-|-- scripts/                     # Command-line experiment entry points
-|-- notebooks/                   # Exploratory notebooks
-|-- docs/                        # Design notes and experiment logs
-|-- tests/                       # Unit tests for samplers, labels, probes
-|-- results/                     # Generated outputs, checkpoints, metrics
-|-- paper_figs/                  # Final exported figures
-`-- experiment_pipeline_plan.md  # Original research plan
-```
-
-## Default Synthetic Experiments
-
-The first implementation target is Dyck and Shuffle Dyck with matched model sizes.
-
-| Model | Layers | Embedding Dim | Hidden / State Dim | Notes |
-|---|---:|---:|---:|---|
-| RNN | 3 | 128 | 256 | tanh recurrent baseline |
-| LSTM | 3 | 128 | 128 | use cell state `c` for extraction |
-| Transformer | 3 | 128 | 128 | causal attention, 4 heads |
-| Mamba | 3 | 128 | 128 | state dim 16, expansion 2 |
-
-### Dyck With Noise
-
-- Dyck pairs: `10`
-- Total Dyck length: `20`
-- Sequence length: `48`
-- Training steps: `10000`
-- Repeat probability: `0.5`
-- Number of tasks: `512`
-- Prefix probe max length: `7`
-
-### Dyck Without Noise
-
-- Dyck pairs: `24`
-- Total Dyck length: `48`
-- Sequence length: `48`
-- Training steps: `10000`
-- Repeat probability: `1.0`
-- Number of tasks: `512`
-- Prefix probe max length: `7`
-
-### Shuffle Dyck
-
-- Bracket types: `()`, `[]`, `{}`
-- Dyck pairs: `24`
-- Total length: `48`
-- Sequence length: `48`
-- Run both `repeat_prob = 1.0` and `repeat_prob = 0.5`
-
-## Planned Workflow
-
-1. Train matched models on a controlled task.
-2. Evaluate task accuracy on task-relevant token positions.
-3. Extract hidden states for each architecture:
-   - RNN: `state_kind = "h"`, last layer.
-   - LSTM: `state_kind = "c"`, last layer.
-   - Transformer: `state_kind = "h"`, last layer.
-   - Mamba: `state_kind = "h"`, last layer.
-4. Build prefix labels such as `left`, `right`, `height`, per-type counters, legal next-token class, and irrelevant prefix details.
-5. Fit Ridge and logistic probes.
-6. Analyze learned probe directions:
-   - `height` should align with `left - right`.
-   - Shuffle Dyck should produce separate directions for separate bracket counters.
-7. Report compression using relevant retention and irrelevant forgetting metrics.
-
-## Script Entry Points
-
-The script files are intentionally thin placeholders for now. They define the stable command interface that future code should implement.
+If you want the smallest end-to-end experiment, start with Dyck and one model:
 
 ```bash
-python scripts/train_model.py --config configs/dyck_noise.yaml
-python scripts/extract_hidden_states.py --run results/dyck_noise/rnn_seed0
-python scripts/run_probes.py --features results/dyck_noise/rnn_seed0/hidden_states.pt
-python scripts/analyze_geometry.py --probe-dir results/dyck_noise/rnn_seed0/probes
-python scripts/run_pipeline.py --config configs/dyck_noise.yaml
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --steps 200 --num-examples 512
 ```
 
-## Output Convention
+That command will:
+
+1. train `rnn_seed0`
+2. save a checkpoint and metrics under `results/dyck_no_noise/rnn_seed0`
+3. extract hidden states plus aligned Dyck prefix labels
+4. run sufficient-statistic and compression probes
+5. print the saved probe summary through the geometry stage
+
+If you want the full configured model sweep for the same task:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml
+```
+
+If `mamba-ssm` is not installed, `run_pipeline.py` will skip the official `mamba` model automatically so the Dyck pipeline can still start cleanly.
+
+## Current Pipeline
+
+The implemented runnable baseline is Dyck.
+
+### 1. Train
+
+- Script: `scripts/train_model.py`
+- Input: a YAML config under `configs/`
+- Output: `results/<experiment>/<model>_seed<seed>/checkpoints/model_final.pt`
+
+### 2. Extract Hidden States
+
+- Script: `scripts/extract_hidden_states.py`
+- Output files:
+  - `hidden_states.pt`
+  - `labels.parquet` or `labels.csv`
+
+The extraction uses the architecture-specific hidden state:
+
+- RNN: last-layer `h`
+- LSTM: last-layer `c`
+- Transformer: last-layer `h`
+- Mamba / `mamba_like`: last-layer `h`
+
+### 3. Run Probes
+
+- Script: `scripts/run_probes.py`
+- Output directory: `results/<experiment>/<model>_seed<seed>/probes/`
+
+Current Dyck probes include:
+
+- Ridge targets: `left`, `right`, `height`
+- Classification targets: `height_class`, `left_right_class`, `legal_next_class`
+- Compression-style summary over relevant vs irrelevant labels
+
+### 4. Geometry / Summary Check
+
+- Script: `scripts/analyze_geometry.py`
+- Current behavior: print `probes/summary.json`
+
+The main geometry sanity check is whether the learned `height` direction aligns with `w_left - w_right`.
+
+## Recommended Dyck Runs
+
+### Dyck no noise
+
+Config: `configs/dyck_no_noise.yaml`
+
+- `dyck_pairs = 24`
+- `total_length = 48`
+- `seq_len = 48`
+- `repeat_prob = 1.0`
+- cleanest starting point for sufficient-statistic probing
+
+### Dyck 50% noise
+
+Config: `configs/dyck_noise.yaml`
+
+- `dyck_pairs = 10`
+- `total_length = 20`
+- `seq_len = 48`
+- `repeat_prob = 0.5`
+- first compression-oriented setting
+
+## Script Usage
+
+Run the whole Dyck pipeline:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn
+```
+
+Run only training:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --stage train
+```
+
+Resume from an existing run and only do extraction:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage extract
+```
+
+Run probes on an existing extracted run:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage probe
+```
+
+Run the stages manually if needed:
+
+```bash
+python scripts/train_model.py --config configs/dyck_no_noise.yaml --model rnn --seed 0
+python scripts/extract_hidden_states.py --run results/dyck_no_noise/rnn_seed0
+python scripts/run_probes.py --features results/dyck_no_noise/rnn_seed0/hidden_states.pt
+python scripts/analyze_geometry.py --probe-dir results/dyck_no_noise/rnn_seed0/probes
+```
+
+## Repo Layout
 
 ```text
-results/
-`-- dyck_noise/
-    `-- rnn_seed0/
-        |-- config.yaml
-        |-- checkpoints/
-        |-- metrics.json
-        |-- hidden_states.pt
-        |-- labels.parquet
-        |-- probes/
-        `-- figures/
+src/hse/tasks/dyck/           Dyck sampler, labels, metrics
+src/hse/models/               RNN, LSTM, Transformer, Mamba wrappers
+src/hse/analysis/probes/      Linear sufficient-statistic probes
+src/hse/analysis/compression/ Relevant retention / irrelevant forgetting
+scripts/                      Reproducible experiment entry points
+configs/                      Dyck and Shuffle-Dyck configs
+results/                      Checkpoints, states, labels, probe summaries
+docs/                         Workflow notes and conversation summary
 ```
 
-## Chinese Notes
+## What Is Implemented vs Planned
 
-这个文件夹现在是实验架构骨架，还不是完整可运行实现。它的设计目标是把 `experiment_pipeline_plan.md` 里的研究问题落成清晰的工程边界：
+Implemented now:
 
-- `tasks` 负责生成序列和真实 sufficient statistics 标签。
-- `models` 负责不同架构的统一封装。
-- `utils` 负责训练、保存、加载、hidden state extraction。
-- `analysis/probes` 负责线性探针。
-- `analysis/geometry` 负责方向几何和子空间分析。
-- `analysis/compression` 负责区分 task-relevant retention 和 task-irrelevant forgetting。
+- Dyck training
+- hidden-state extraction
+- sufficient-statistic probes
+- compression summaries
+- one-command pipeline orchestration through `scripts/run_pipeline.py`
 
-后续真正写实验代码时，优先实现 Dyck no-noise 和 Dyck 50% noise 两条线，再扩展到 Shuffle Dyck、Markov/HMM 和 Needle-in-a-Haystack。
+Planned next:
+
+- Shuffle Dyck
+- stronger geometry outputs and figures
+- Markov / HMM tasks
+- Needle-in-a-haystack style realistic tasks
