@@ -1,0 +1,20 @@
+name: hse
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - jupyterlab
+  - ipykernel
+  - numpy>=1.26
+  - pandas>=2.1
+  - pyarrow>=16.0
+  - pyyaml>=6.0
+  - scikit-learn>=1.4
+  - matplotlib>=3.8
+  - seaborn>=0.13
+  - tqdm>=4.66
+  - bottleneck>=1.4
+  - numexpr>=2.10
+  - pip:
+      - -e .
