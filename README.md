@@ -76,31 +76,40 @@ pip install -e .
 
 Main dependencies are declared in [pyproject.toml](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/pyproject.toml).
 
-## Scripts
-
-The script pipeline is still available when you want non-notebook runs:
-
-```bash
-python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn
-python scripts/train_model.py --config configs/dyck_no_noise.yaml --model rnn --seed 0
-python scripts/extract_hidden_states.py --run results/dyck_no_noise/rnn_seed0
-python scripts/run_probes.py --features results/dyck_no_noise/rnn_seed0/hidden_states.pt
-```
-
 ## Project Layout
 
 ```text
-src/hse/tasks/dyck/             Dyck sampler, labels, metrics
-src/hse/models/                 RNN, LSTM, Transformer, Mamba wrappers
-src/hse/analysis/probes/        Linear probes
-src/hse/analysis/compression/   Relevant retention / irrelevant forgetting
-src/hse/experiments/dyck.py     Notebook-friendly Dyck runner
-configs/                        Task configs
-notebooks/                      Task notebooks
-scripts/                        CLI pipeline entry points
-results/                        Checkpoints, hidden states, labels, probe summaries
-docs/                           Notes and workflow docs
+experiment_pipeline_plan.md     Pipeline design note that drives the project organization
+environment.yml                 Conda environment definition for notebook and CLI runs
+configs/                        YAML configs for Dyck variants and future task settings
+docs/                           Workflow notes and conversation summaries
+notebooks/                      Task-level notebooks; Dyck is the current runnable entrypoint
+paper_figs/                     Saved figures for paper-facing plots and exports
+results/                        Experiment outputs, checkpoints, extracted states, and probe summaries
+scripts/                        CLI entry points for train / extract / probe / geometry / env setup
+src/hse/                        Python package root
+src/hse/models/simple.py        Current model implementations for RNN, LSTM, Transformer, and Mamba
+src/hse/tasks/dyck/             Implemented Dyck task: config, sampler, labels, and metrics
+src/hse/tasks/shuffle_dyck/     Placeholder package for the next task in the pipeline
+src/hse/tasks/markov/           Placeholder package for future Markov / HMM experiments
+src/hse/tasks/needle/           Placeholder package for future needle-style tasks
+src/hse/analysis/probes/        Linear probe code and Dyck-specific probe helpers
+src/hse/analysis/compression/   Relevant-retention / irrelevant-forgetting metrics
+src/hse/analysis/geometry/      Direction and geometry analysis utilities
+src/hse/analysis/visualization/ Reserved package for future plotting helpers
+src/hse/experiments/dyck.py     Notebook-friendly Dyck orchestration over models, seeds, and probes
+src/hse/utils/                  Shared training, extraction, config, IO, and label-loading helpers
+tests/                          Lightweight scaffold tests for package structure
 ```
+
+Practical reading of the layout:
+
+- `notebooks/` is the human-facing entrypoint. If you want to run experiments interactively, start there.
+- `src/hse/experiments/` is the notebook support layer. It packages the train-extract-probe flow into reusable helpers.
+- `scripts/` is the CLI mirror of the same workflow. Use it when you want reproducible batch runs outside notebooks.
+- `src/hse/tasks/` defines task generation and labels. Right now only `dyck/` is implemented; the other task directories are scaffolds.
+- `src/hse/models/simple.py` currently contains all four model families in one file. So `src/hse/models/` exists, but it is not yet split into per-model modules.
+- `results/` is expected to grow quickly. It holds both notebook outputs and script-generated runs, so it is part of the working tree rather than just a scratch folder.
 
 ## Current Status
 
