@@ -9,6 +9,14 @@ The two reference documents are:
 - [experiment_pipeline_plan.md](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/experiment_pipeline_plan.md)
 - [docs/codex_conversation_summary.md](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/docs/codex_conversation_summary.md)
 
+## Setup
+
+Install the project dependencies before running the pipeline:
+
+```bash
+pip install -e .
+```
+
 ## Start Here
 
 If you want the smallest end-to-end experiment, start with Dyck and one model:

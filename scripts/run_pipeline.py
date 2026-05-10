@@ -9,7 +9,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from hse.utils import load_yaml, model_specs_from_config
+from hse.utils.config import load_yaml, model_specs_from_config
 
 
 def _config_path(path_str: str) -> Path:

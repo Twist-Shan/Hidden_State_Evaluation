@@ -1,15 +1,43 @@
+# Python cache
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.ruff_cache/
-.jupyter/
+.ipynb_checkpoints/
+
+# Environments
 .venv/
-results/**
-!results/.gitkeep
-notebooks/.ipynb_checkpoints/
-notebooks/*.executed.ipynb
+venv/
+env/
+conda-meta/
+
+# Logs
+*.log
+logs/
+wandb/
+runs/
+mlruns/
+
+# Data and outputs
+data/
+datasets/
+outputs/
+results/
+figures/
+plots/
+
+# Models and checkpoints
+checkpoints/
+models/
 *.pt
 *.pth
 *.ckpt
-*.parquet
-*.sqlite
+*.onnx
+*.pkl
+*.joblib
+*.npz
+*.npy
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

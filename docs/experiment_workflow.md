@@ -1,27 +1,101 @@
 # Experiment Workflow
 
-This document turns `experiment_pipeline_plan.md` into an implementation checklist.
+This file converts the high-level plan into the actual order of operations for the current repo. The first complete runnable path is the Dyck baseline.
 
-## Phase 1: Dyck Baseline
+## Dyck Baseline
 
-- Implement Dyck sampler and prefix labels.
-- Train RNN, LSTM, Transformer, and Mamba on next-token prediction.
-- Extract last-layer hidden states with the architecture-specific `state_kind`.
-- Probe `left`, `right`, `height`, `height_class`, and `(left, right)`.
-- Check whether `w_height` aligns with `w_left - w_right`.
+Use `configs/dyck_no_noise.yaml` to establish the simplest closed loop:
 
-## Phase 2: Shuffle Dyck
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --steps 200 --num-examples 512
+```
 
-- Extend labels to per-type counters.
-- Probe per-type heights and joint count-vector classes.
-- Test whether separate bracket counters occupy separate directions or subspaces.
+For a more realistic run, remove the small overrides:
 
-## Phase 3: Compression
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0
+```
 
-- Add task-irrelevant labels for noise tokens, distractor identities, and exact prefix details.
-- Report relevant retention and irrelevant forgetting separately.
+## Pipeline Stages
 
-## Phase 4: Realistic Tasks
+### Stage 1: Train
 
-- Add needle-in-a-haystack retrieval.
-- Compare controlled sufficient-statistic probes with retrieval-specific probes.
+- script: `scripts/train_model.py`
+- task: causal next-token prediction on Dyck sequences
+- output:
+  - `checkpoints/model_final.pt`
+  - `metrics.json`
+  - `config.json`
+
+### Stage 2: Extract
+
+- script: `scripts/extract_hidden_states.py`
+- reads the saved run directory
+- rebuilds the task and model from `config.json`
+- saves:
+  - `hidden_states.pt`
+  - `labels.parquet` or `labels.csv`
+
+### Stage 3: Probe
+
+- script: `scripts/run_probes.py`
+- Dyck sufficient-statistic targets:
+  - `left`
+  - `right`
+  - `height`
+  - `height_class`
+  - `left_right_class`
+  - `legal_next_class`
+- compression-related labels are evaluated in the same stage
+- saves:
+  - `probes/summary.json`
+  - `probes/compression_probe_rows.csv`
+
+### Stage 4: Geometry Check
+
+- script: `scripts/analyze_geometry.py`
+- current lightweight behavior:
+  - print `summary.json`
+- main sanity check:
+  - whether `w_height` is aligned with `w_left - w_right`
+
+## Stage-Specific Commands
+
+Train only:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --stage train
+```
+
+Extract only:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage extract
+```
+
+Probe only:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage probe
+```
+
+Geometry only:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage geometry
+```
+
+## Model Policy
+
+- RNN, LSTM, and Transformer are the stable baseline comparison set.
+- Official `mamba` remains optional because it depends on `mamba-ssm`.
+- `run_pipeline.py` skips official `mamba` automatically when that dependency is unavailable, so the Dyck baseline still launches.
+
+## Next Expansion Order
+
+1. Dyck no noise
+2. Dyck 50% noise
+3. Shuffle Dyck
+4. Stronger compression analysis
+5. Markov / HMM tasks
+6. Needle-in-a-haystack

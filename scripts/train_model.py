@@ -11,7 +11,9 @@ import torch
 
 from hse.models import build_model
 from hse.tasks.dyck import DyckConfig, DyckSampler
-from hse.utils import load_yaml, model_specs_from_config, save_json, train_causal_lm, evaluate_causal_lm
+from hse.utils.config import load_yaml, model_specs_from_config
+from hse.utils.io import save_json
+from hse.utils.training import evaluate_causal_lm, train_causal_lm
 
 
 def main() -> None:
