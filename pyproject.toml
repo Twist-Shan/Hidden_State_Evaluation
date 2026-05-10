@@ -1,0 +1,32 @@
+[project]
+name = "hidden-state-evaluation"
+version = "0.1.0"
+description = "Experiments for sufficient statistics, hidden-state probes, and compression in sequence models."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "bottleneck>=1.4",
+    "matplotlib>=3.8",
+    "numexpr>=2.10",
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pyarrow>=16.0",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.4",
+    "seaborn>=0.13",
+    "torch>=2.2",
+    "tqdm>=4.66",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatchling.build.targets.wheel]
+packages = ["src/hse"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]

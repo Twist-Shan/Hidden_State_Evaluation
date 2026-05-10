@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.jupyter/
+.venv/
+results/**
+!results/.gitkeep
+notebooks/.ipynb_checkpoints/
+notebooks/*.executed.ipynb
+*.pt
+*.pth
+*.ckpt
+*.parquet
+*.sqlite

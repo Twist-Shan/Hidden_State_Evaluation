@@ -1,0 +1,53 @@
+experiment:
+  name: dyck_noise
+  task: dyck
+  seeds: [0, 1, 2]
+
+task:
+  dyck_pairs: 10
+  total_length: 20
+  seq_len: 48
+  repeat_prob: 0.5
+  n_tasks: 512
+  prefix_probe_max_len: 7
+
+training:
+  steps: 10000
+  batch_size: 128
+  optimizer: adamw
+  learning_rate: 0.0003
+
+models:
+  - name: rnn
+    layers: 3
+    emb_dim: 128
+    hidden_dim: 256
+    state_kind: h
+  - name: lstm
+    layers: 3
+    emb_dim: 128
+    hidden_dim: 128
+    state_kind: c
+  - name: transformer
+    layers: 3
+    emb_dim: 128
+    hidden_dim: 128
+    n_heads: 4
+    ffn_dim: 512
+    state_kind: h
+  - name: mamba
+    layers: 3
+    emb_dim: 128
+    hidden_dim: 128
+    state_dim: 16
+    expansion_factor: 2
+    require_official_mamba: true
+    state_kind: h
+
+analysis:
+  probes:
+    ridge_targets: [left, right, height]
+    logistic_targets: [height_class, left_right_class]
+    balance_by: height
+  geometry:
+    check_height_equals_left_minus_right: true
