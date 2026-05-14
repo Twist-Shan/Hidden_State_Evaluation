@@ -88,14 +88,14 @@ The task is a causal next-token prediction problem on sequences where Dyck brack
 
 Setting:
 
-- Dyck pairs: `10`. 24
-- Total length: `20`. 48 
-- Sequence length: `48`. 120
+- Dyck pairs: `24`. 
+- Total length: `48`. 
+- Sequence length: `120`. 
 - Repeat probability: `0.5`.
 - Training steps: `10000`.
 - Batch size: `128`.
 - Learning rate: `3e-4`.
-- Prefix probe max length: `7`.
+- Probe prefix length: `8`.
 
 Evaluation:
 
@@ -129,11 +129,26 @@ Setting:
 - Training steps: `10000`.
 - Batch size: `128`.
 - Learning rate: `3e-4`.
-- Prefix probe max length: `7`.
+- Probe prefix length: `8`.
 
 #### 4.1.2 Shuffle Dyck
 
 The task is also causal next-token prediction, but the bracket structure is generated from several interleaved Dyck-like streams. Compared with standard Dyck, the main object of interest is whether the model represents a vector of counters for different bracket types, rather than only a single stack height. The total context is an interleaving of these bracket streams. A closing bracket is valid only when the corresponding type has positive unmatched count.
+
+##### Shuffle Dyck with 50% Noise
+
+Setting:
+
+- Task: Shuffle Dyck.
+- Bracket types: `()`, `[]`, `{}`.
+- Pairs per bracket type: `8`.
+- Total bracket length: `48`.
+- Sequence length: `120`.
+- Generation probability: `0.5` (no noise).
+- Training steps: `10000`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
+- Probe prefix length: `8`.
 
 ##### Shuffle Dyck with No Noise
 
@@ -148,8 +163,7 @@ Setting:
 - Training steps: `10000`.
 - Batch size: `128`.
 - Learning rate: `3e-4`.
-- Prefix probe max length: `7`.
-- Probe prefix length used in the main analysis: `8`.
+- Probe prefix length: `8`.
 
 Evaluation:
 
@@ -199,8 +213,7 @@ Setting:
 - Training steps: `10000`.
 - Batch size: `128`.
 - Learning rate: `3e-4`.
-- Prefix probe max length: `7`.
-- Probe prefix length used in the main analysis: `8`.
+- Probe prefix length: `8`.
 
 Generation:
 
@@ -317,8 +330,7 @@ Setting:
 - Training steps: `10000`.
 - Batch size: `128`.
 - Learning rate: `3e-4`.
-- Prefix probe max length: `7`.
-- Probe prefix length used in the main analysis: `8`.
+- Probe prefix length: `8`.
 
 Generation:
 

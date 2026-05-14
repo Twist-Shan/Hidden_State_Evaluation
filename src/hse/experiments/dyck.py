@@ -23,9 +23,9 @@ DEFAULT_DYCK_TASKS = {
         "prefix_probe_max_len": 7,
     },
     "dyck_50_noise": {
-        "dyck_pairs": 10,
-        "total_length": 20,
-        "seq_len": 48,
+        "dyck_pairs": 24,
+        "total_length": 48,
+        "seq_len": 120,
         "repeat_prob": 0.5,
         "n_tasks": 512,
         "prefix_probe_max_len": 7,
