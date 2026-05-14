@@ -78,7 +78,7 @@ To be designed.
 
 The goal of the synthetic tasks is to build fully controlled environments where sufficient statistics can be precisely defined and computed.
 
-### 4.1 Dyck and Shuffle Dyck
+### 4.1 Dyck 
 
 The task is a causal next-token prediction problem on sequences where Dyck bracket tokens are planted into a longer context. The main object of interest is whether the model's hidden state represents the information needed to predict the Dyck token, especially the prefix structure of the bracket sequence, like the counter of the brackets and height.
 
@@ -88,12 +88,13 @@ The task is a causal next-token prediction problem on sequences where Dyck brack
 
 Setting:
 
-- Dyck pairs: `10`.
-- Total Length: `20`.
-- Sequence length: `48`.
+- Dyck pairs: `10`. 24
+- Total length: `20`. 48 
+- Sequence length: `48`. 120
+- Repeat probability: `0.5`.
 - Training steps: `10000`.
-- Repeat probability: `repeat_prob = 0.5`.
-- Number of tasks: `n_tasks = 512`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
 - Prefix probe max length: `7`.
 
 Evaluation:
@@ -122,28 +123,33 @@ Prefix probe:
 Setting:
 
 - Dyck pairs: `24`.
-- Total Length: `48`.
+- Total length: `48`.
 - Sequence length: `48`.
+- Repeat probability: `1.0` (no noise).
 - Training steps: `10000`.
-- Repeat probability: `repeat_prob = 1`.
-- Number of minor tasks: `n_tasks = 512`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
 - Prefix probe max length: `7`.
 
 #### 4.1.2 Shuffle Dyck
 
 The task is also causal next-token prediction, but the bracket structure is generated from several interleaved Dyck-like streams. Compared with standard Dyck, the main object of interest is whether the model represents a vector of counters for different bracket types, rather than only a single stack height. The total context is an interleaving of these bracket streams. A closing bracket is valid only when the corresponding type has positive unmatched count.
 
+##### Shuffle Dyck with No Noise
+
 Setting:
 
-- Use multiple bracket types, for example `()`, `[]`, and `{}`.
-- Dyck pairs: `24`.
-- Total Length: `48`.
+- Task: Shuffle Dyck.
+- Bracket types: `()`, `[]`, `{}`.
+- Pairs per bracket type: `8`.
+- Total bracket length: `48`.
 - Sequence length: `48`.
+- Generation probability: `1.0` (no noise).
 - Training steps: `10000`.
-- Repeat probability: `repeat_prob = 1`.
-- Number of minor tasks: `n_tasks = 512`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
 - Prefix probe max length: `7`.
-- Run both no-noise and `repeat_prob = 0.5` versions, matching the Dyck setting.
+- Probe prefix length used in the main analysis: `8`.
 
 Evaluation:
 
@@ -171,7 +177,155 @@ Prefix probe:
 
 #### 4.1.3 Dyck-k
 
-- How to define the Stack?
+The task is causal next-token prediction on balanced parentheses with multiple bracket types. Unlike Shuffle Dyck, Dyck-\(k\) requires a true stack discipline: a closing bracket is legal only if it matches the most recently opened unmatched bracket. Therefore, the sufficient state is no longer only a vector of per-type counts. The model must track the current stack content, or at least the stack information relevant for predicting the next legal closing bracket.
+
+For example, with two bracket types `()` and `[]`:
+
+- The sequence `([)]` is valid under Shuffle Dyck-style independent counters, because both types have balanced counts.
+- But it is invalid under Dyck-\(k\), because after reading `([`, the top of the stack is `[`, so the next closing bracket must be `]`, not `)`.
+
+Thus, Dyck-\(k\) separates multi-counter compression from stack-like compression.
+
+##### Dyck-\(k\) with No Noise
+
+Setting:
+
+- Task: Dyck-\(k\).
+- Bracket types: `()`, `[]`, `{}`.
+- Total bracket pairs: `24`.
+- Total bracket length: `48`.
+- Sequence length: `48`.
+- Generation probability: `1.0` (no noise).
+- Training steps: `10000`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
+- Prefix probe max length: `7`.
+- Probe prefix length used in the main analysis: `8`.
+
+Generation:
+
+- Generate a valid Dyck-\(k\) sequence using a stack.
+- At each step, if the stack is empty, the next bracket must be an opening bracket.
+- If the stack is nonempty, either:
+  - open a new bracket of one of the \(k\) types, if the remaining budget allows;
+  - or close the current top-of-stack bracket.
+- A closing bracket must match the top stack symbol.
+- The sequence is valid if the stack is empty at the end and all bracket pairs are used.
+
+Stack definition:
+
+- Let the stack at prefix length \(t\) be
+  \[
+  S_t = (s_1,s_2,\dots,s_{d_t}),
+  \]
+  where \(d_t\) is the current depth and \(s_{d_t}\) is the top of the stack.
+- Each stack element is a bracket type:
+  \[
+  s_i \in \{1,2,\dots,k\}.
+  \]
+- When reading an opening bracket of type \(a\), update
+  \[
+  S_{t+1} = (S_t,a).
+  \]
+- When reading a closing bracket of type \(a\), the transition is legal only if
+  \[
+  \operatorname{top}(S_t)=a.
+  \]
+  Then
+  \[
+  S_{t+1}=S_t \text{ with its top element removed}.
+  \]
+
+Evaluation:
+
+- Compute next-token accuracy on all bracket positions.
+- Separately compute accuracy on:
+  - opening-bracket targets;
+  - closing-bracket targets;
+  - positions where the stack depth is small;
+  - positions where the stack depth is large.
+- Compute legal-next-token accuracy:
+  - whether the model assigns high probability to legal next brackets;
+  - whether it correctly identifies the unique legal closing bracket when the next token is a close.
+- Evaluate generalization to:
+  - fresh bracket-type patterns;
+  - longer sequences;
+  - deeper nesting than seen during training.
+
+Prefix probe:
+
+- Extract the hidden representation after a fixed Dyck-\(k\) prefix.
+- Compute prefix labels from the bracket prefix:
+  - `depth`: current stack depth \(d_t\).
+  - `top`: current top-of-stack bracket type.
+  - `top-2`: the top two stack symbols, if available.
+  - `top-r`: the top \(r\) stack symbols, padded if the stack has depth less than \(r\).
+  - per-type left counts.
+  - per-type right counts.
+  - per-type heights.
+  - full stack class, for small maximum depth.
+- Fit Ridge probes for scalar variables:
+  - depth;
+  - per-type heights.
+- Fit Logistic probes for discrete variables:
+  - top-of-stack type;
+  - top-2 stack class;
+  - top-\(r\) stack class;
+  - full stack class when the number of possible stacks is manageable;
+  - legal next closing bracket.
+- Balance the probe data by stack depth and top-of-stack type so that the probe is not dominated by shallow stacks or frequent bracket types.
+- Compare probes for:
+  - depth alone;
+  - per-type height vector;
+  - top-of-stack;
+  - top-\(r\) stack symbols.
+
+Main representation questions:
+
+- Does the model encode only the scalar depth \(d_t\), or does it encode the full stack structure?
+- Can the model linearly decode the top-of-stack symbol?
+- Does the representation contain information about deeper stack elements, such as top-2 or top-3?
+- Are prefixes with the same per-type counts but different stack order separated in hidden space?
+
+Geometry analysis:
+
+- Project hidden states using supervised directions for:
+  - depth;
+  - top-of-stack;
+  - per-type heights.
+- Use PCA only as a sanity check.
+- The main evidence should come from supervised probes and controlled prefix-pair comparisons.
+- Compare Dyck-\(k\) against Shuffle Dyck:
+  - Shuffle Dyck should be solvable by a vector of counters.
+  - Dyck-\(k\) requires stack order information.
+- This comparison tests whether the model learns:
+  - scalar counting;
+  - multi-dimensional counting;
+  - or stack-like structured memory.
+
+##### Dyck-\(k\) with 50% Noise
+
+Setting:
+
+- Task: Dyck-\(k\) with noise.
+- Bracket types: `()`, `[]`, `{}`.
+- Number of bracket types: `3`.
+- Total bracket pairs: `10`.
+- Total bracket length: `20`.
+- Sequence length: `48`.
+- Repeat probability: `0.5`.
+- Training steps: `10000`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
+- Prefix probe max length: `7`.
+- Probe prefix length used in the main analysis: `8`.
+
+Generation:
+
+- First generate a valid Dyck-\(k\) bracket sequence of length `20`.
+- Insert noise tokens into non-bracket positions until the total sequence length is `48`.
+- Noise tokens do not affect the stack.
+- The stack is updated only when a Dyck bracket token appears.
 
 ### 4.2 Resettable Modular Counter
 

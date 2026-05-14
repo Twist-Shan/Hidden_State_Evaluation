@@ -1,14 +1,14 @@
 experiment:
-  name: shuffle_dyck
+  name: shuffle_dyck_no_noise
   task: shuffle_dyck
   seeds: [0, 1, 2]
 
 task:
   bracket_types: ["()", "[]", "{}"]
-  dyck_pairs: 24
+  pairs_per_type: 8
   total_length: 48
   seq_len: 48
-  repeat_prob_grid: [1.0, 0.5]
+  generation_prob: 1.0
   n_tasks: 512
   prefix_probe_max_len: 7
 
@@ -28,6 +28,6 @@ analysis:
     logistic_targets:
       - count_vector_class
       - legal_next_type
-    balance_by: count_vector
+    balance_by: count_vector_class
   geometry:
     check_independent_counter_directions: true

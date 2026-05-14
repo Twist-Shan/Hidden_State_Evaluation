@@ -31,7 +31,7 @@ The notebook workflow is now task-based rather than one giant mixed notebook.
 | Task | Notebook | Status |
 |---|---|---|
 | Dyck | [notebooks/Dyck_4Models_Probe.ipynb](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/notebooks/Dyck_4Models_Probe.ipynb) | Runnable |
-| Shuffle Dyck | planned | Placeholder |
+| Shuffle Dyck | [notebooks/Shuffle_Dyck_4Models_Probe_No_Noise.ipynb](/home/hp_twist_shan/Research/Hidden%20State%20Evaluation/notebooks/Shuffle_Dyck_4Models_Probe_No_Noise.ipynb) | Runnable |
 | Markov / HMM | planned | Placeholder |
 | Needle in a Haystack | planned | Placeholder |
 
@@ -90,7 +90,7 @@ scripts/                        CLI entry points for train / extract / probe / g
 src/hse/                        Python package root
 src/hse/models/simple.py        Current model implementations for RNN, LSTM, Transformer, and Mamba
 src/hse/tasks/dyck/             Implemented Dyck task: config, sampler, labels, and metrics
-src/hse/tasks/shuffle_dyck/     Placeholder package for the next task in the pipeline
+src/hse/tasks/shuffle_dyck/     Implemented Shuffle Dyck task with interleaved bracket streams and multi-counter labels
 src/hse/tasks/markov/           Placeholder package for future Markov / HMM experiments
 src/hse/tasks/needle/           Placeholder package for future needle-style tasks
 src/hse/analysis/probes/        Linear probe code and Dyck-specific probe helpers
@@ -116,16 +116,17 @@ Practical reading of the layout:
 Implemented now:
 
 - Dyck sampler and labels
+- Shuffle Dyck sampler and labels
 - four-family model interface
 - notebook-friendly Dyck runner
 - task-based Dyck notebook
+- task-based Shuffle Dyck notebook
 - hidden-state extraction
 - sufficient-statistic probes
 - compression summaries
 
 Still to implement:
 
-- Shuffle Dyck task module
 - Markov / HMM task module
 - Needle task module
 - richer geometry visualizations
