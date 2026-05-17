@@ -7,26 +7,17 @@ This directory is organized by task, following `experiment_pipeline_plan.md`.
 | Task | Notebook | Status | Notes |
 |---|---|---|---|
 | Dyck | `Dyck_4Models_Probe_No_Noise.ipynb` and `Dyck_4Models_Probe_50_Noise.ipynb` | Runnable | Dyke for the 4-model comparison and probes |
+| Dyck-k | `Dyck_k_4Models_Probe_No_Noise.ipynb` and `Dyck_k_4Models_Probe_50_Noise.ipynb` | Runnable | Stack-sensitive multi-bracket Dyck-k probes for the 4-model comparison |
 | Shuffle Dyck | `Shuffle_Dyck_4Models_Probe_No_Noise.ipynb` and `Shuffle_Dyck_4Models_Probe_50_Noise.ipynb` | Runnable | Shuffle Dyck with three bracket types for the 4-model comparison and probes |
 | Markov / HMM | planned | Not implemented yet | Task module is still a placeholder |
 | Needle in a Haystack | planned | Not implemented yet | Task module is still a placeholder |
 
 ## Recommended Use
 
-Start here:
+These notebooks are designed to:
 
-- `Dyck_4Models_Probe.ipynb`
-- `Shuffle_Dyck_4Models_Probe_No_Noise.ipynb`
-- `Shuffle_Dyck_4Models_Probe_50_Noise.ipynb`
-
-This notebook is designed to:
-
-- choose one Dyck task setting at a time
+- choose one task setting at a time
 - train `rnn`, `lstm`, `transformer`, and official `mamba`
 - extract hidden states
 - run sufficient-statistic probes
 - write results under `results/notebooks/dyck/<task_name>/`
-
-## Legacy Notebook
-
-`Dyck_All_Models_Train_Probe_Compression.ipynb` is kept as an older all-in-one notebook. Prefer `Dyck_4Models_Probe.ipynb` for the current task-based workflow.
