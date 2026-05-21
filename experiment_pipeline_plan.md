@@ -131,6 +131,39 @@ Setting:
 - Learning rate: `3e-4`.
 - Probe prefix length: `8`.
 
+##### Dyck with No Noise (Long)
+
+Setting:
+
+- Dyck pairs: `200`. 
+- Total length: `400`. 
+- Sequence length: `400`. 
+- Repeat probability: `0.5`.
+- Training steps: `10000`.
+- Batch size: `128`.
+- Learning rate: `3e-4`.
+- Probe prefix length: `200`.
+
+Additional Curved-manifold search:
+- Build a low-dimensional subspace from PCA on the class means `μ(h)`.
+- Fit an ordered `1D` curve through the height means inside that subspace.
+- Project each sample to the nearest point on the curve and use arc length as a `1D manifold coordinate`.
+- Compare three explanations of the representation:
+  - `1D line`,
+  - `1D curved manifold`,
+  - `2D plane`.
+- Sweep over PCA subspace dimension (`2, 3, 4, 6, 8, 10, 12`) to test whether weak `1D` manifold results are due to insufficient subspace dimension.
+- Replace the smooth spline-like curve with a piecewise-linear path through `μ(h)` to check whether spline overshoot is the main failure mode.
+- Fit a small nonlinear decoder on the top two mean-PCA coordinates to test whether the representation is better characterized as `2D` rather than `1D`.
+- Re-evaluate the `1D` manifold after trimming endpoint height classes, to test whether boundary heights are the main source of geometric distortion.
+- Plot height means in the mean-PCA plane.
+- Plot `height -> PC1` relationships.
+- Plot local direction-consistency statistics across heights.
+- Export interactive `3D` HTML views showing:
+  - sample hidden states,
+  - fitted manifold curve,
+  - height means `μ(h)`.
+
 #### 4.1.2 Shuffle Dyck
 
 The task is also causal next-token prediction, but the bracket structure is generated from several interleaved Dyck-like streams. Compared with standard Dyck, the main object of interest is whether the model represents a vector of counters for different bracket types, rather than only a single stack height. The total context is an interleaving of these bracket streams. A closing bracket is valid only when the corresponding type has positive unmatched count.
