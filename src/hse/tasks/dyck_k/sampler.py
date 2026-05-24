@@ -92,13 +92,28 @@ class DyckKSampler:
         stack = torch.full((batch_size, cfg.total_pairs), -1, dtype=torch.long, device=self.device)
         depths = torch.zeros(batch_size, dtype=torch.long, device=self.device)
         opens_used = torch.zeros(batch_size, dtype=torch.long, device=self.device)
+        pair_quotas = (
+            None
+            if cfg.pairs_per_type is None
+            else torch.tensor(cfg.pairs_per_type, dtype=torch.long, device=self.device)
+        )
+        opens_by_type = torch.zeros(
+            batch_size,
+            cfg.num_bracket_types,
+            dtype=torch.long,
+            device=self.device,
+        )
         dyck_steps = torch.empty(batch_size, cfg.total_length, dtype=torch.long, device=self.device)
         bracket_type_ids = torch.empty_like(dyck_steps)
 
         for t in range(cfg.total_length):
             remaining = cfg.total_length - t
             can_close = depths > 0
-            can_open = (opens_used < cfg.total_pairs) & (remaining > (depths + 1))
+            if pair_quotas is None:
+                has_open_quota = opens_used < cfg.total_pairs
+            else:
+                has_open_quota = (opens_by_type < pair_quotas.unsqueeze(0)).any(dim=1)
+            can_open = has_open_quota & (remaining > (depths + 1))
 
             must_open = ~can_close
             must_close = ~can_open
@@ -115,13 +130,23 @@ class DyckKSampler:
             if bool(step_is_open.any()):
                 open_rows = rows[step_is_open]
                 open_depths = depths[step_is_open]
-                open_types = torch.randint(
-                    low=0,
-                    high=cfg.num_bracket_types,
-                    size=(open_rows.numel(),),
-                    generator=self.generator,
-                    device=self.device,
-                )
+                if pair_quotas is None:
+                    open_types = torch.randint(
+                        low=0,
+                        high=cfg.num_bracket_types,
+                        size=(open_rows.numel(),),
+                        generator=self.generator,
+                        device=self.device,
+                    )
+                else:
+                    allowed = opens_by_type[open_rows] < pair_quotas.unsqueeze(0)
+                    scores = torch.rand(
+                        allowed.shape,
+                        generator=self.generator,
+                        device=self.device,
+                    ).masked_fill(~allowed, -1.0)
+                    open_types = scores.argmax(dim=1)
+                    opens_by_type[open_rows, open_types] += 1
                 stack[open_rows, open_depths] = open_types
                 bracket_type_ids[step_is_open, t] = open_types
 

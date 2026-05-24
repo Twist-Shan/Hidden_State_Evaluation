@@ -14,6 +14,7 @@ BRACKET_NAME_BY_PAIR = {
 @dataclass
 class DyckKConfig:
     bracket_types: tuple[str, ...] = ("()", "[]", "{}")
+    pairs_per_type: tuple[int, ...] | None = None
     total_pairs: int = 24
     total_length: int = 48
     seq_len: int = 48
@@ -52,12 +53,21 @@ class DyckKConfig:
 
     def __post_init__(self) -> None:
         self.bracket_types = tuple(self.bracket_types)
+        if self.pairs_per_type is not None:
+            self.pairs_per_type = tuple(int(n) for n in self.pairs_per_type)
         if not self.bracket_types:
             raise ValueError("bracket_types must contain at least one bracket pair")
         if any(len(pair) != 2 for pair in self.bracket_types):
             raise ValueError("Each entry of bracket_types must be a two-character bracket pair")
         if len(set(self.bracket_types)) != len(self.bracket_types):
             raise ValueError("bracket_types must be unique")
+        if self.pairs_per_type is not None:
+            if len(self.pairs_per_type) != len(self.bracket_types):
+                raise ValueError("pairs_per_type must have one entry per bracket type")
+            if any(n < 0 for n in self.pairs_per_type):
+                raise ValueError("pairs_per_type entries must be non-negative")
+            if sum(self.pairs_per_type) != self.total_pairs:
+                raise ValueError("pairs_per_type must sum to total_pairs")
         if self.total_pairs <= 0:
             raise ValueError("total_pairs must be positive")
         if self.total_length > self.seq_len:

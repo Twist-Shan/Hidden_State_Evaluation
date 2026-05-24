@@ -1,0 +1,32 @@
+experiment:
+  name: dyck_k_long_no_noise
+  task: dyck_k
+  seeds: [0]
+
+task:
+  bracket_types: ["()", "[]", "{}"]
+  pairs_per_type: [70, 70, 70]
+  total_pairs: 210
+  total_length: 420
+  seq_len: 420
+  generation_prob: 1.0
+  n_tasks: 512
+  prefix_probe_max_len: 210
+
+training:
+  steps: 10000
+  batch_size: 128
+  optimizer: adamw
+  learning_rate: 0.0003
+
+analysis:
+  probes:
+    ridge_targets: [depth, height_round, height_square, height_curly]
+    logistic_targets:
+      - height_vector_class
+      - top_type_class
+      - top_2_class
+      - top_3_class
+      - legal_next_close_type
+      - full_stack_small_class
+    balance_by: depth_top_class
