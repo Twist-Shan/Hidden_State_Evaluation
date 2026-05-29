@@ -372,7 +372,7 @@ Generation:
 - Noise tokens do not affect the stack.
 - The stack is updated only when a Dyck bracket token appears.
 
-### 4.2 Resettable Modular Counter
+### 4.2 \(a^n b^n\)
 
 To be designed.
 
