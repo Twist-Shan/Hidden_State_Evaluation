@@ -21,3 +21,21 @@ def test_dyck_sampler_and_rnn_smoke():
     assert {"left", "right", "height"}.issubset(labels.columns)
     assert logits.shape == (3, 12, sampler.vocab_size)
     assert states.shape == (3, 12, 8)
+
+
+def test_dyck23_cfg_sampler_generates_valid_strings():
+    from hse.tasks.dyck23 import Dyck23Config, Dyck23Sampler, build_prefix_labels, validate_dyck23_tokens
+
+    cfg = Dyck23Config(min_length=0, max_length=12, max_depth=3)
+    sampler = Dyck23Sampler(cfg, seed=0)
+    batch = sampler.sample(16)
+    labels = build_prefix_labels(batch, cfg)
+
+    assert batch.tokens.shape == (16, 14)
+    assert batch.target_mask[:, 0].sum().item() == 0
+    assert {"depth", "top_type_class", "legal_next_class"}.issubset(labels.columns)
+    for row in range(batch.tokens.shape[0]):
+        length = int(batch.bracket_lengths[row].item())
+        bracket_tokens = batch.tokens[row, 1 : 1 + length].tolist()
+        assert validate_dyck23_tokens(bracket_tokens, cfg)
+        assert int(batch.dyck_mask[row].sum().item()) == length

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -32,7 +33,13 @@ def train_causal_lm(
         batch = sampler.sample(batch_size)
         tokens = batch.tokens.to(device)
         logits = model(tokens)
-        loss = criterion(logits[:, :-1].reshape(-1, sampler.vocab_size), tokens[:, 1:].reshape(-1))
+        loss = _next_token_loss(
+            criterion=criterion,
+            logits=logits,
+            tokens=tokens,
+            vocab_size=sampler.vocab_size,
+            target_mask=getattr(batch, "target_mask", None),
+        )
         opt.zero_grad(set_to_none=True)
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
@@ -67,10 +74,47 @@ def evaluate_causal_lm(
     batch = sampler.sample(batch_size)
     tokens = batch.tokens.to(device)
     dyck_mask = batch.dyck_mask.to(device)
+    target_mask = getattr(batch, "target_mask", None)
+    if target_mask is not None:
+        target_mask = target_mask.to(device)
     logits = model(tokens)
-    loss = criterion(logits[:, :-1].reshape(-1, sampler.vocab_size), tokens[:, 1:].reshape(-1))
+    loss = _next_token_loss(
+        criterion=criterion,
+        logits=logits,
+        tokens=tokens,
+        vocab_size=sampler.vocab_size,
+        target_mask=target_mask,
+    )
     return {
         "loss": float(loss.item()),
-        "accuracy": next_token_accuracy(logits, tokens),
+        "accuracy": _next_token_accuracy(logits, tokens, target_mask),
         "dyck_accuracy": dyck_token_accuracy(logits, tokens, dyck_mask),
     }
+
+
+def _next_token_loss(
+    *,
+    criterion: nn.CrossEntropyLoss,
+    logits: torch.Tensor,
+    tokens: torch.Tensor,
+    vocab_size: int,
+    target_mask: Any = None,
+) -> torch.Tensor:
+    flat_logits = logits[:, :-1].reshape(-1, vocab_size)
+    flat_target = tokens[:, 1:].reshape(-1)
+    if target_mask is None:
+        return criterion(flat_logits, flat_target)
+    flat_mask = target_mask[:, 1:].reshape(-1).bool()
+    return criterion(flat_logits[flat_mask], flat_target[flat_mask])
+
+
+@torch.no_grad()
+def _next_token_accuracy(logits: torch.Tensor, tokens: torch.Tensor, target_mask: torch.Tensor | None = None) -> float:
+    if target_mask is None:
+        return next_token_accuracy(logits, tokens)
+    pred = logits[:, :-1].argmax(dim=-1)
+    target = tokens[:, 1:]
+    mask = target_mask[:, 1:].bool()
+    if not bool(mask.any()):
+        return float("nan")
+    return float((pred[mask] == target[mask]).float().mean().item())

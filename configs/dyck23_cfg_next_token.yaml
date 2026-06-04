@@ -1,0 +1,67 @@
+experiment:
+  name: dyck23_cfg_next_token
+  task: dyck23
+  seed: 0
+
+task:
+  max_depth: 3
+  bracket_types: ["()", "[]"]
+  length_bins:
+    len_0_40:
+      min_length: 0
+      max_length: 40
+    len_40_80:
+      min_length: 42
+      max_length: 80
+    len_80_120:
+      min_length: 82
+      max_length: 120
+
+data:
+  train_examples: 10000
+  test_examples: 2000
+  probe_examples: 1024
+
+training:
+  objective: next_token_prediction
+  steps: 15000
+  epochs: 20
+  batch_size: 128
+  optimizer: adam
+  learning_rate: 0.0003
+  grad_clip: 5.0
+  dropout: 0.1
+
+models:
+  - name: rnn
+    layers: 5
+    emb_dim: 80
+    hidden_dim: 80
+    learned_initial_state: true
+    fused: true
+    state_kind: h
+  - name: lstm
+    layers: 5
+    emb_dim: 40
+    hidden_dim: 40
+    learned_initial_state: true
+    fused: true
+    state_kind: h
+  - name: transformer
+    layers: 5
+    emb_dim: 32
+    hidden_dim: 32
+    n_heads: 8
+    ffn_dim: 128
+    pos_encoding: sinusoidal
+    embed_scale: true
+    final_layer_norm: true
+    state_kind: h
+  - name: mamba
+    layers: 5
+    emb_dim: 36
+    hidden_dim: 36
+    state_dim: 16
+    expansion_factor: 2
+    require_official_mamba: true
+    state_kind: h
