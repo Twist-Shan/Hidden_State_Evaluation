@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 
 BRACKET_NAME_BY_PAIR = {
@@ -17,6 +18,8 @@ class Dyck23Config:
     max_length: int = 40
     max_depth: int = 3
     bracket_types: tuple[str, ...] = ("()", "[]")
+    generation_prob: float = 1.0
+    num_noise_tokens: int = 0
     device: str = "cpu"
 
     @property
@@ -32,8 +35,13 @@ class Dyck23Config:
         return 2
 
     @property
+    def noise_tokens(self) -> tuple[int, ...]:
+        return tuple(range(3, 3 + self.num_noise_tokens))
+
+    @property
     def open_tokens(self) -> tuple[int, ...]:
-        return tuple(3 + 2 * i for i in range(len(self.bracket_types)))
+        offset = 3 + self.num_noise_tokens
+        return tuple(offset + 2 * i for i in range(len(self.bracket_types)))
 
     @property
     def close_tokens(self) -> tuple[int, ...]:
@@ -41,11 +49,16 @@ class Dyck23Config:
 
     @property
     def vocab_size(self) -> int:
-        return 3 + 2 * len(self.bracket_types)
+        return 3 + self.num_noise_tokens + 2 * len(self.bracket_types)
 
     @property
     def max_sequence_length(self) -> int:
-        return self.max_length + 2
+        return self.payload_length_for(self.max_length) + 2
+
+    def payload_length_for(self, bracket_length: int) -> int:
+        if self.generation_prob >= 1.0:
+            return int(bracket_length)
+        return int(math.ceil(int(bracket_length) / self.generation_prob))
 
     @property
     def valid_lengths(self) -> tuple[int, ...]:
@@ -73,5 +86,11 @@ class Dyck23Config:
             raise ValueError("max_length must be >= min_length")
         if self.max_depth <= 0:
             raise ValueError("max_depth must be positive")
+        if not 0.0 < self.generation_prob <= 1.0:
+            raise ValueError("generation_prob must be in (0, 1]")
+        if self.num_noise_tokens < 0:
+            raise ValueError("num_noise_tokens must be non-negative")
+        if self.generation_prob < 1.0 and self.num_noise_tokens == 0:
+            raise ValueError("num_noise_tokens must be positive when generation_prob < 1")
         if not self.valid_lengths:
             raise ValueError("length range must contain at least one even length")

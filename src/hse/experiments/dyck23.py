@@ -86,6 +86,7 @@ def run_dyck23_suite(
     max_probe_rows: int = 20_000,
     device: str | None = None,
     results_root: str | Path | None = None,
+    setting_name: str = "dyck23_cfg_next_token",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Train 4 x 3 Dyck-(2,3) next-token models and run linear probes."""
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -95,7 +96,7 @@ def run_dyck23_suite(
         raise ValueError(f"Unknown Dyck23 model names: {unknown}")
 
     bins = length_bins or DYCK23_LENGTH_BINS
-    results_root = Path(results_root or Path("results") / "dyck23_cfg_next_token")
+    results_root = Path(results_root or Path("results") / setting_name)
     results_root.mkdir(parents=True, exist_ok=True)
 
     run_rows: list[dict] = []
@@ -134,7 +135,7 @@ def run_dyck23_suite(
             backbone_params = count_trainable_parameters(model, exclude_output=True)
             save_json(
                 {
-                    "setting_name": "dyck23_cfg_next_token",
+                    "setting_name": setting_name,
                     "length_bin": bin_name,
                     "task": asdict(cfg),
                     "model_name": model_name,

@@ -55,16 +55,20 @@ class Dyck23Sampler:
         for row in range(batch_size):
             bracket_length = self.rng.choice(cfg.valid_lengths)
             bracket_tokens, steps, type_ids = self._sample_string(bracket_length // 2)
-            sequence = [cfg.bos_token, *bracket_tokens, cfg.eos_token]
+            payload_length = cfg.payload_length_for(bracket_length)
+            payload = self._sample_noise_payload(payload_length)
+            positions = self._sample_plant_positions(bracket_length, payload_length)
+            for pos, tok, step, type_id in zip(positions, bracket_tokens, steps, type_ids):
+                payload[pos] = tok
+                seq_pos = 1 + pos
+                dyck_mask[row, seq_pos] = True
+                dyck_steps[row, seq_pos] = step
+                bracket_type_ids[row, seq_pos] = type_id
+
+            sequence = [cfg.bos_token, *payload, cfg.eos_token]
             length = len(sequence)
 
             tokens[row, :length] = torch.tensor(sequence, dtype=torch.long)
-            if bracket_length:
-                start = 1
-                end = 1 + bracket_length
-                dyck_mask[row, start:end] = True
-                dyck_steps[row, start:end] = torch.tensor(steps, dtype=torch.long)
-                bracket_type_ids[row, start:end] = torch.tensor(type_ids, dtype=torch.long)
             target_mask[row, 1:length] = True
             lengths[row] = length
             bracket_lengths[row] = bracket_length
@@ -78,6 +82,29 @@ class Dyck23Sampler:
             dyck_steps=dyck_steps.to(self.device),
             bracket_type_ids=bracket_type_ids.to(self.device),
         )
+
+    def _sample_noise_payload(self, payload_length: int) -> list[int]:
+        cfg = self.config
+        if cfg.num_noise_tokens == 0:
+            return [cfg.pad_token] * payload_length
+        return [self.rng.choice(cfg.noise_tokens) for _ in range(payload_length)]
+
+    def _sample_plant_positions(self, bracket_length: int, payload_length: int) -> list[int]:
+        cfg = self.config
+        if bracket_length == 0:
+            return []
+        if cfg.generation_prob >= 1.0:
+            return list(range(bracket_length))
+
+        all_positions = list(range(payload_length))
+        chosen = [pos for pos in all_positions if self.rng.random() < cfg.generation_prob]
+        if len(chosen) < bracket_length:
+            chosen_set = set(chosen)
+            remaining = [pos for pos in all_positions if pos not in chosen_set]
+            chosen.extend(self.rng.sample(remaining, bracket_length - len(chosen)))
+        elif len(chosen) > bracket_length:
+            chosen = self.rng.sample(chosen, bracket_length)
+        return sorted(chosen)
 
     def _build_counts(self, max_pairs: int) -> list[list[int]]:
         cfg = self.config

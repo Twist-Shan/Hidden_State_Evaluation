@@ -39,3 +39,27 @@ def test_dyck23_cfg_sampler_generates_valid_strings():
         bracket_tokens = batch.tokens[row, 1 : 1 + length].tolist()
         assert validate_dyck23_tokens(bracket_tokens, cfg)
         assert int(batch.dyck_mask[row].sum().item()) == length
+
+
+def test_dyck23_cfg_sampler_supports_noise():
+    from hse.tasks.dyck23 import Dyck23Config, Dyck23Sampler, build_prefix_labels, validate_dyck23_tokens
+
+    cfg = Dyck23Config(
+        min_length=8,
+        max_length=12,
+        max_depth=3,
+        generation_prob=0.5,
+        num_noise_tokens=10,
+    )
+    sampler = Dyck23Sampler(cfg, seed=0)
+    batch = sampler.sample(8)
+    labels = build_prefix_labels(batch, cfg)
+
+    assert batch.tokens.shape == (8, 26)
+    assert int(batch.lengths.max().item()) > int(batch.bracket_lengths.max().item()) + 2
+    assert {"is_dyck_position", "last_noise_token_class", "noise_pattern_hash_class"}.issubset(labels.columns)
+    for row in range(batch.tokens.shape[0]):
+        mask = batch.dyck_mask[row].bool()
+        bracket_tokens = batch.tokens[row, mask].tolist()
+        assert validate_dyck23_tokens(bracket_tokens, cfg)
+        assert len(bracket_tokens) == int(batch.bracket_lengths[row].item())
