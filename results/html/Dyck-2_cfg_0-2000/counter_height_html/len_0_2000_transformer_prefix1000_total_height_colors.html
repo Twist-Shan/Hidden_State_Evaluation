@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>len_0_2000 | transformer | prefix=1000 | total height colors</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f8f7f4; color: #202124; }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 20px 24px 28px; }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    .sub { margin: 0 0 14px; color: #4b5563; line-height: 1.5; }
+    #plot { width: 100%; height: 78vh; min-height: 720px; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>len_0_2000 | transformer | prefix=1000 | total height colors</h1>
+    <p class="sub">Same 3D counter projection, colored by total height = height_round + height_square.</p>
+    <div id="plot"></div>
+  </div>
+  <script>
+    const payload = {"x": [6.018866877779833, -0.7111387712510244, -3.9307241459992026, -3.8563356819555383, -0.6316151927416728, -0.33474483700456265, -3.9334400688363025, 1.4981874413974257, -0.5597827364761343, 6.061402935861389, -0.8651701118447641, -0.2616129798464685, 5.978606390874126, -3.7298979624048196, 1.6433765657220263, -0.29233696793240715, 1.0227982504668767, -3.941486461766628, -3.850598882753443, 6.03562393819273, -0.18133687244664853, 1.4881098959356671, 1.3113547598147504, -3.770335892674396, -3.675468264934051, 6.03682224117698, -0.9723912086796874, 1.4195169148688154, -0.4493136119086423, -0.6923714665543618, -3.7788184496966077, -0.5033102638129856, -3.9086754844078957, 1.13882827487959, 1.545408285809396, 6.033988764240599, -0.5893520041901058, 0.7397259030925416, -0.9117349051123842, 1.04508216722518, -3.9353621658595004, -0.5866184050367563, 1.2457890603717916, 1.4831100755847373], "y": [-2.77918729331016, 3.8044390125475624, -4.420680441182026, -4.400888229976371, 3.746143343460103, 3.5459527060367617, -4.4058996947671645, 1.1267376033360204, 3.9355306988274026, -2.7825189040361558, 3.642021639570015, 3.5490980895950672, -2.7978675173154084, -4.2872892230438495, 1.1353429883059687, 3.336681565163558, 1.1469949701557938, -4.440636823352907, -4.373795803931052, -2.7637301307923625, 2.8785926557064516, 1.295226184551247, 0.832592015103978, -4.327104635466296, -4.233926999126882, -2.806659448770683, 3.5875052625383845, 1.03288233526972, 3.6482622895035273, 3.5178392356318144, -4.343098633938628, 3.5821023481824934, -4.422752649204169, 1.3738358970130706, 0.9958004575763136, -2.8095738649508055, 3.3450643781707696, 1.1601487032429196, 2.725688454573148, 1.0396410032016838, -4.4553042573798844, 3.2542072890841265, 0.7995950367355383, 1.2106312068467953], "z": [1.7343527361943523, 2.915315478123755, 0.28494524776689434, 0.09134443075559978, 2.7089619244713328, 2.2393083990621165, 0.31163911034236197, -3.5539318803643485, 3.24842928014199, 1.9122297235010324, 2.497201402745565, 2.3046682306921875, 1.73170705364261, -0.1654466153964115, -3.4875316798405303, 1.8368252484862, -3.4953358754188, 0.27508997147589204, 0.11475610984561643, 1.8848091455153984, 0.9861734985571462, -3.364703689902553, -3.869571853822783, -0.07996806652782278, -0.19140155878488932, 1.8993744977672404, 2.5402785725950103, -3.680036319292718, 2.4143478369830795, 2.1216232673432978, -0.07400912398510243, 2.3778334990964805, 0.2310923379451034, -3.186131454517961, -3.6746827813139173, 1.8131060721515522, 1.7764769379095087, -3.3390787347266806, 0.9825571804538031, -3.6683058306032414, 0.2040994216820369, 1.794935229906701, -3.860963477515617, -3.41228685859192], "round_height": [10, 5, 8, 6, 5, 10, 5, 16, 5, 8, 6, 6, 10, 14, 10, 9, 6, 5, 9, 10, 14, 9, 14, 16, 14, 8, 8, 14, 10, 9, 14, 5, 5, 6, 10, 9, 6, 8, 16, 16, 8, 16, 16, 9], "square_height": [10, 5, 6, 8, 5, 10, 5, 10, 5, 6, 8, 8, 10, 16, 10, 11, 8, 5, 11, 10, 16, 11, 16, 10, 16, 6, 6, 16, 10, 11, 16, 5, 5, 8, 10, 11, 8, 6, 10, 10, 6, 10, 10, 11], "total_height": [20, 10, 14, 14, 10, 20, 10, 26, 10, 14, 14, 14, 20, 30, 20, 20, 14, 10, 20, 20, 30, 20, 30, 26, 30, 14, 14, 30, 20, 20, 30, 10, 10, 14, 20, 20, 14, 14, 26, 26, 14, 26, 26, 20], "text": ["round=10, square=10, total=20", "round=5, square=5, total=10", "round=8, square=6, total=14", "round=6, square=8, total=14", "round=5, square=5, total=10", "round=10, square=10, total=20", "round=5, square=5, total=10", "round=16, square=10, total=26", "round=5, square=5, total=10", "round=8, square=6, total=14", "round=6, square=8, total=14", "round=6, square=8, total=14", "round=10, square=10, total=20", "round=14, square=16, total=30", "round=10, square=10, total=20", "round=9, square=11, total=20", "round=6, square=8, total=14", "round=5, square=5, total=10", "round=9, square=11, total=20", "round=10, square=10, total=20", "round=14, square=16, total=30", "round=9, square=11, total=20", "round=14, square=16, total=30", "round=16, square=10, total=26", "round=14, square=16, total=30", "round=8, square=6, total=14", "round=8, square=6, total=14", "round=14, square=16, total=30", "round=10, square=10, total=20", "round=9, square=11, total=20", "round=14, square=16, total=30", "round=5, square=5, total=10", "round=5, square=5, total=10", "round=6, square=8, total=14", "round=10, square=10, total=20", "round=9, square=11, total=20", "round=6, square=8, total=14", "round=8, square=6, total=14", "round=16, square=10, total=26", "round=16, square=10, total=26", "round=8, square=6, total=14", "round=16, square=10, total=26", "round=16, square=10, total=26", "round=9, square=11, total=20"], "meta": {"length_bin": "len_0_2000", "model": "transformer", "prefix": "1000", "n_points": 44}};
+    const trace = {
+      type: 'scatter3d',
+      mode: 'markers',
+      name: 'total height',
+      x: payload.x,
+      y: payload.y,
+      z: payload.z,
+      text: payload.text,
+      marker: {
+        size: 2.8,
+        opacity: 0.18,
+        color: payload.total_height,
+        colorscale: 'Viridis',
+        colorbar: { title: 'total height' },
+      },
+      hovertemplate: '%{text}<br>pc1=%{x:.3f}<br>pc2=%{y:.3f}<br>pc3=%{z:.3f}<extra></extra>',
+    };
+    const axisStyle = { backgroundcolor: '#fafaf9', gridcolor: '#d1d5db', zerolinecolor: '#9ca3af' };
+    const layout = {
+      margin: { l: 0, r: 0, t: 20, b: 0 },
+      paper_bgcolor: '#f8f7f4',
+      plot_bgcolor: '#ffffff',
+      showlegend: false,
+      scene: {
+        xaxis: { title: 'counter mean-PC1', ...axisStyle },
+        yaxis: { title: 'counter mean-PC2', ...axisStyle },
+        zaxis: { title: 'counter mean-PC3', ...axisStyle },
+        camera: { eye: { x: 1.45, y: 1.55, z: 0.95 } },
+        aspectmode: 'data',
+      },
+    };
+    Plotly.newPlot('plot', [trace], layout, {responsive: true, displaylogo: false});
+  </script>
+</body>
+</html>

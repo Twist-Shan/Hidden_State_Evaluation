@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>len_0_2000 | transformer | prefix=1000 | current token colors</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f8f7f4; color: #202124; }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 20px 24px 28px; }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    .sub { margin: 0 0 14px; color: #4b5563; line-height: 1.5; }
+    #plot { width: 100%; height: 78vh; min-height: 720px; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>len_0_2000 | transformer | prefix=1000 | current token colors</h1>
+    <p class="sub">Same 3D counter projection, colored by current input token. Use the legend to hide/show individual token phases.</p>
+    <div id="plot"></div>
+  </div>
+  <script>
+    const payload = {"traces": [{"type": "scatter3d", "mode": "markers", "name": "round_open", "x": [-3.9307241459992026, -3.8563356819555383, -3.9334400688363025, -3.7298979624048196, -3.941486461766628, -3.850598882753443, -3.770335892674396, -3.675468264934051, -3.7788184496966077, -3.9086754844078957, -3.9353621658595004], "y": [-4.420680441182026, -4.400888229976371, -4.4058996947671645, -4.2872892230438495, -4.440636823352907, -4.373795803931052, -4.327104635466296, -4.233926999126882, -4.343098633938628, -4.422752649204169, -4.4553042573798844], "z": [0.28494524776689434, 0.09134443075559978, 0.31163911034236197, -0.1654466153964115, 0.27508997147589204, 0.11475610984561643, -0.07996806652782278, -0.19140155878488932, -0.07400912398510243, 0.2310923379451034, 0.2040994216820369], "text": ["round_open<br>round=8, square=6, total=14", "round_open<br>round=6, square=8, total=14", "round_open<br>round=5, square=5, total=10", "round_open<br>round=14, square=16, total=30", "round_open<br>round=5, square=5, total=10", "round_open<br>round=9, square=11, total=20", "round_open<br>round=16, square=10, total=26", "round_open<br>round=14, square=16, total=30", "round_open<br>round=14, square=16, total=30", "round_open<br>round=5, square=5, total=10", "round_open<br>round=8, square=6, total=14"], "marker": {"size": 4.4, "opacity": 0.72, "color": "#2563eb", "line": {"color": "rgba(17,24,39,0.18)", "width": 0.4}}, "hovertemplate": "%{text}<br>pc1=%{x:.3f}<br>pc2=%{y:.3f}<br>pc3=%{z:.3f}<extra></extra>"}, {"type": "scatter3d", "mode": "markers", "name": "square_open", "x": [6.018866877779833, 6.061402935861389, 5.978606390874126, 6.03562393819273, 6.03682224117698, 6.033988764240599], "y": [-2.77918729331016, -2.7825189040361558, -2.7978675173154084, -2.7637301307923625, -2.806659448770683, -2.8095738649508055], "z": [1.7343527361943523, 1.9122297235010324, 1.73170705364261, 1.8848091455153984, 1.8993744977672404, 1.8131060721515522], "text": ["square_open<br>round=10, square=10, total=20", "square_open<br>round=8, square=6, total=14", "square_open<br>round=10, square=10, total=20", "square_open<br>round=10, square=10, total=20", "square_open<br>round=8, square=6, total=14", "square_open<br>round=9, square=11, total=20"], "marker": {"size": 4.4, "opacity": 0.72, "color": "#f97316", "line": {"color": "rgba(17,24,39,0.18)", "width": 0.4}}, "hovertemplate": "%{text}<br>pc1=%{x:.3f}<br>pc2=%{y:.3f}<br>pc3=%{z:.3f}<extra></extra>"}, {"type": "scatter3d", "mode": "markers", "name": "round_close", "x": [1.4981874413974257, 1.6433765657220263, 1.0227982504668767, 1.4881098959356671, 1.3113547598147504, 1.4195169148688154, 1.13882827487959, 1.545408285809396, 0.7397259030925416, 1.04508216722518, 1.2457890603717916, 1.4831100755847373], "y": [1.1267376033360204, 1.1353429883059687, 1.1469949701557938, 1.295226184551247, 0.832592015103978, 1.03288233526972, 1.3738358970130706, 0.9958004575763136, 1.1601487032429196, 1.0396410032016838, 0.7995950367355383, 1.2106312068467953], "z": [-3.5539318803643485, -3.4875316798405303, -3.4953358754188, -3.364703689902553, -3.869571853822783, -3.680036319292718, -3.186131454517961, -3.6746827813139173, -3.3390787347266806, -3.6683058306032414, -3.860963477515617, -3.41228685859192], "text": ["round_close<br>round=16, square=10, total=26", "round_close<br>round=10, square=10, total=20", "round_close<br>round=6, square=8, total=14", "round_close<br>round=9, square=11, total=20", "round_close<br>round=14, square=16, total=30", "round_close<br>round=14, square=16, total=30", "round_close<br>round=6, square=8, total=14", "round_close<br>round=10, square=10, total=20", "round_close<br>round=8, square=6, total=14", "round_close<br>round=16, square=10, total=26", "round_close<br>round=16, square=10, total=26", "round_close<br>round=9, square=11, total=20"], "marker": {"size": 4.4, "opacity": 0.72, "color": "#16a34a", "line": {"color": "rgba(17,24,39,0.18)", "width": 0.4}}, "hovertemplate": "%{text}<br>pc1=%{x:.3f}<br>pc2=%{y:.3f}<br>pc3=%{z:.3f}<extra></extra>"}, {"type": "scatter3d", "mode": "markers", "name": "square_close", "x": [-0.7111387712510244, -0.6316151927416728, -0.33474483700456265, -0.5597827364761343, -0.8651701118447641, -0.2616129798464685, -0.29233696793240715, -0.18133687244664853, -0.9723912086796874, -0.4493136119086423, -0.6923714665543618, -0.5033102638129856, -0.5893520041901058, -0.9117349051123842, -0.5866184050367563], "y": [3.8044390125475624, 3.746143343460103, 3.5459527060367617, 3.9355306988274026, 3.642021639570015, 3.5490980895950672, 3.336681565163558, 2.8785926557064516, 3.5875052625383845, 3.6482622895035273, 3.5178392356318144, 3.5821023481824934, 3.3450643781707696, 2.725688454573148, 3.2542072890841265], "z": [2.915315478123755, 2.7089619244713328, 2.2393083990621165, 3.24842928014199, 2.497201402745565, 2.3046682306921875, 1.8368252484862, 0.9861734985571462, 2.5402785725950103, 2.4143478369830795, 2.1216232673432978, 2.3778334990964805, 1.7764769379095087, 0.9825571804538031, 1.794935229906701], "text": ["square_close<br>round=5, square=5, total=10", "square_close<br>round=5, square=5, total=10", "square_close<br>round=10, square=10, total=20", "square_close<br>round=5, square=5, total=10", "square_close<br>round=6, square=8, total=14", "square_close<br>round=6, square=8, total=14", "square_close<br>round=9, square=11, total=20", "square_close<br>round=14, square=16, total=30", "square_close<br>round=8, square=6, total=14", "square_close<br>round=10, square=10, total=20", "square_close<br>round=9, square=11, total=20", "square_close<br>round=5, square=5, total=10", "square_close<br>round=6, square=8, total=14", "square_close<br>round=16, square=10, total=26", "square_close<br>round=16, square=10, total=26"], "marker": {"size": 4.4, "opacity": 0.72, "color": "#9333ea", "line": {"color": "rgba(17,24,39,0.18)", "width": 0.4}}, "hovertemplate": "%{text}<br>pc1=%{x:.3f}<br>pc2=%{y:.3f}<br>pc3=%{z:.3f}<extra></extra>"}]};
+    const axisStyle = { backgroundcolor: '#fafaf9', gridcolor: '#d1d5db', zerolinecolor: '#9ca3af' };
+    const layout = {
+      margin: { l: 0, r: 0, t: 20, b: 0 },
+      paper_bgcolor: '#f8f7f4',
+      plot_bgcolor: '#ffffff',
+      legend: { orientation: 'h', y: 1.02, x: 0.0 },
+      scene: {
+        xaxis: { title: 'counter mean-PC1', ...axisStyle },
+        yaxis: { title: 'counter mean-PC2', ...axisStyle },
+        zaxis: { title: 'counter mean-PC3', ...axisStyle },
+        camera: { eye: { x: 1.45, y: 1.55, z: 0.95 } },
+        aspectmode: 'data',
+      },
+    };
+    Plotly.newPlot('plot', payload.traces, layout, {responsive: true, displaylogo: false});
+  </script>
+</body>
+</html>
