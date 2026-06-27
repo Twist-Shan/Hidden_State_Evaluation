@@ -1,34 +1,61 @@
 # Hidden State Evaluation
 
-这个仓库用于研究序列模型 hidden state 是否编码任务所需的 sufficient statistics，以及模型是否在保留任务相关信息的同时压缩无关前缀信息。
+Hidden State Evaluation is a research codebase for studying whether sequence models encode task-relevant sufficient statistics in their hidden states, and whether they discard task-irrelevant prefix information through effective compression.
 
-当前主线有两层：
+The repository currently focuses on controlled synthetic sequence tasks, especially Dyck-style counting tasks. The main experimental question is not only whether a model predicts the next token correctly, but whether its internal state contains readable variables such as counts, stack depth, stack top, legal next-token classes, and other sufficient statistics.
 
-- 通用 pipeline：`task -> model -> train -> hidden-state extraction -> probes -> geometry/compression`，见 [experiment_pipeline_plan.md](experiment_pipeline_plan.md)。
-- Transformer synthetic counting 实验：重点研究长上下文、噪声、counting feature emergence、hidden count 到输出的 gap，见 [synthetic_transformer_experiment_plan.md](synthetic_transformer_experiment_plan.md)。
+## Research Motivation
 
-## 当前状态
+The project is organized around two related claims:
 
-| 模块 | 状态 | 入口 | 主要产物 |
+1. A trained sequence model should internally represent the statistics that are sufficient for solving the task.
+2. Good hidden-state compression should preserve task-relevant information while forgetting irrelevant prefix details such as noise tokens, distractors, or exact raw-token history.
+
+The current pipeline is:
+
+```text
+task -> model -> train -> hidden-state extraction -> probes -> geometry/compression analysis
+```
+
+The broader plan is documented in:
+
+- [experiment_pipeline_plan.md](experiment_pipeline_plan.md): the general sufficient-statistics and compression pipeline.
+- [synthetic_transformer_experiment_plan.md](synthetic_transformer_experiment_plan.md): the Transformer-focused synthetic counting plan, including length/noise sweeps, emergence analysis, readout analysis, synthetic NIAH bridges, and reasoning-token experiments.
+
+## Current Scope
+
+The codebase supports matched experiments over these model families:
+
+| Model | Status | Notes |
+|---|---|---|
+| RNN | Implemented | Basic recurrent baseline. |
+| LSTM | Implemented | Gated recurrent baseline. |
+| Transformer | Implemented | Main model for the synthetic Transformer counting experiments. |
+| Mamba | Implemented when `mamba-ssm` is installed | Official Mamba is optional because it has extra CUDA/package constraints. |
+| `mamba_like` | Implemented as fallback only | Engineering fallback for smoke checks, not a substitute for official Mamba results. |
+
+Implemented task families:
+
+| Task | Status | Main entry points | Main outputs |
 |---|---|---|---|
-| Dyck baseline | 已实现 | `configs/dyck_no_noise.yaml`, `configs/dyck_noise.yaml` | `results/dyck_no_noise/`, `results/dyck_noise/` |
-| Shuffle Dyck | 已实现 | `configs/shuffle_dyck.yaml`, `configs/shuffle_dyck_noise.yaml` | `results/notebooks/shuffle_dyck_reference_style/` |
-| Dyck-k | 已实现 | `configs/dyck_k_no_noise.yaml`, `configs/dyck_k_50_noise.yaml`, `configs/dyck_k_long_no_noise.yaml` | `results/notebooks/dyck_k_reference_style/` |
-| Dyck-(2,3) / Dyck-2 CFG next-token | 已实现 | `configs/dyck23_cfg_next_token.yaml`, `scripts/run_dyck23.py` | `results/dyck23_cfg_next_token/`, `results/dyck2_cfg_transformer_next_token_*` |
-| Task A: length/noise Transformer sweep | 已实现 | `configs/generated_task_a/*.yaml`, `notebooks/Dyck_Syn_to_Rea/Task_A_Length_Noise.ipynb` | `results/dyck_counter_task_a_*`, `figures/dyck_counter_task_a*` |
-| Task A extra probes / ablations / activation patching | 已实现 | `scripts/task_a_extra_probes.py`, `scripts/task_a_height_ablation.py`, `scripts/task_a_layerwise_activation_patch.py` | `results/dyck_counter_task_a_extra_probes/`, `results/dyck_counter_task_a_ablation/`, `results/dyck_counter_task_a_activation_patch/` |
-| Task B: checkpoint emergence | 部分实现 | `configs/dyck_counter_emergence_transformer.yaml`, `scripts/run_pipeline.py` | `results/dyck_counter_emergence_transformer/` |
-| Task C: direct final count / readout alignment | 未实现 |  |  |
-| Task D: NeedleCount-synthetic bridge | 未实现 |  |  |
-| Task E: CoT / reasoning-token counting | 未实现 |  |  |
-| Markov / HMM / VoMC tasks | 未实现 |  |  |
-| Needle in a Haystack task module | 未实现 |  |  |
+| Dyck baseline | Implemented | `configs/dyck_no_noise.yaml`, `configs/dyck_noise.yaml` | `results/dyck_no_noise/`, `results/dyck_noise/` |
+| Shuffle Dyck | Implemented | `configs/shuffle_dyck.yaml`, `configs/shuffle_dyck_noise.yaml` | `results/notebooks/shuffle_dyck_reference_style/` |
+| Dyck-k | Implemented | `configs/dyck_k_no_noise.yaml`, `configs/dyck_k_50_noise.yaml`, `configs/dyck_k_long_no_noise.yaml` | `results/notebooks/dyck_k_reference_style/` |
+| Dyck-(2,3) / Dyck-2 CFG next-token | Implemented | `configs/dyck23_cfg_next_token.yaml`, `scripts/run_dyck23.py` | `results/dyck23_cfg_next_token/`, `results/dyck2_cfg_transformer_next_token_*` |
+| Task A: Transformer length/noise counting sweep | Implemented | `configs/generated_task_a/*.yaml`, `notebooks/Dyck_Syn_to_Rea/Task_A_Length_Noise.ipynb` | `results/dyck_counter_task_a_*`, `figures/dyck_counter_task_a*` |
+| Task A extra probes, ablations, activation patching | Implemented | `scripts/task_a_extra_probes.py`, `scripts/task_a_height_ablation.py`, `scripts/task_a_layerwise_activation_patch.py` | `results/dyck_counter_task_a_extra_probes/`, `results/dyck_counter_task_a_ablation/`, `results/dyck_counter_task_a_activation_patch/` |
+| Task B: checkpoint-level emergence analysis | Partially implemented | `configs/dyck_counter_emergence_transformer.yaml`, `scripts/run_pipeline.py` | `results/dyck_counter_emergence_transformer/` |
+| Task C: direct final-count answer and readout alignment | Planned |  |  |
+| Task D: synthetic Needle-in-a-Haystack counting bridge | Planned |  |  |
+| Task E: CoT / reasoning-token counting | Planned |  |  |
+| Markov / HMM / VoMC tasks | Planned |  |  |
+| Needle-in-a-Haystack task module | Planned |  |  |
 
-未完成项先保留空入口和空产物列，避免把 plan 写成已经完成的结果。
+Blank entry/output cells mean the item is planned but not implemented in the current repository state.
 
-## 安装
+## Installation
 
-Conda 环境：
+The recommended environment is the provided Conda environment:
 
 ```bash
 conda env update -f environment.yml
@@ -36,23 +63,60 @@ conda activate hse
 python -m ipykernel install --user --name hse
 ```
 
-或只安装 Python 包：
+For a lighter editable install:
 
 ```bash
 pip install -e .
 ```
 
-核心依赖在 [pyproject.toml](pyproject.toml) 和 [environment.yml](environment.yml) 中声明。官方 Mamba 需要额外安装 `mamba-ssm`；没有官方包时，普通 pipeline 会跳过 `mamba`，但正式四模型对比不应把 `mamba_like` 当作替代结果。
+Core dependencies are declared in [pyproject.toml](pyproject.toml) and [environment.yml](environment.yml). Typical runs require PyTorch, NumPy, pandas, scikit-learn, PyYAML, matplotlib, seaborn, tqdm, and pyarrow.
 
-## 常用命令
+### Official Mamba
 
-跑一个完整 train/extract/probe/geometry 闭环：
+Formal four-model comparisons should use official `mamba-ssm` for the Mamba condition. On a Linux or WSL2 CUDA environment, install it separately:
+
+```bash
+pip install "causal-conv1d>=1.4.0" mamba-ssm --no-build-isolation
+```
+
+If official Mamba is unavailable, the CLI skips unavailable `mamba` runs unless a config explicitly requires them. The `mamba_like` fallback is useful for engineering smoke tests only.
+
+## Quickstart
+
+Run a small end-to-end Dyck pipeline:
+
+```bash
+python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --steps 200 --num-examples 512
+```
+
+Run the default Dyck no-noise pipeline for one model and one seed:
 
 ```bash
 python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0
 ```
 
-只跑某个阶段：
+Run a Transformer setting from the Task A length/noise sweep:
+
+```bash
+python scripts/run_pipeline.py --config configs/generated_task_a/dyck_counter_task_a_sparse_long.yaml --model transformer --seed 0
+```
+
+Run the Dyck-(2,3) CFG next-token suite for selected models:
+
+```bash
+python scripts/run_dyck23.py --models rnn lstm transformer --seed 0
+```
+
+## Pipeline Stages
+
+`scripts/run_pipeline.py` wraps the standard workflow:
+
+1. Train a causal next-token model.
+2. Extract hidden states from selected layers, positions, and checkpoints.
+3. Fit linear probes for sufficient statistics.
+4. Run geometry and compression summaries.
+
+Stage-specific commands:
 
 ```bash
 python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage train
@@ -61,110 +125,165 @@ python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn -
 python scripts/run_pipeline.py --config configs/dyck_no_noise.yaml --model rnn --seed 0 --stage geometry
 ```
 
-跑 Task A 的一个 Transformer setting：
+The individual scripts are also available:
 
-```bash
-python scripts/run_pipeline.py --config configs/generated_task_a/dyck_counter_task_a_sparse_long.yaml --model transformer --seed 0
-```
+| Script | Purpose |
+|---|---|
+| `scripts/train_model.py` | Train a model from a YAML config. |
+| `scripts/extract_hidden_states.py` | Rebuild a trained run and save hidden-state tensors plus labels. |
+| `scripts/run_probes.py` | Fit ridge/logistic probes and save probe summaries and directions. |
+| `scripts/analyze_geometry.py` | Run lightweight probe-direction geometry checks. |
+| `scripts/run_dyck23.py` | Run the Dyck-(2,3) CFG suite. |
 
-汇总 Task A notebook 和图：
+## What the Probes Measure
+
+For Dyck-style tasks, the most common labels are:
+
+| Target | Type | Meaning |
+|---|---|---|
+| `left` | Regression | Number of opening brackets seen in the prefix. |
+| `right` | Regression | Number of closing brackets seen in the prefix. |
+| `height` | Regression | Current unmatched-count height, `left - right`. |
+| `height_class` | Classification | Discrete height class. |
+| `left_right_class` | Classification | Exact `(left, right)` prefix-count class. |
+| `legal_next_class` | Classification | Legal next-token class under the task grammar. |
+
+For Dyck-k, additional labels include stack depth, top-of-stack class, top-r stack summaries, and per-bracket-type counters. For Shuffle Dyck, labels include per-type heights and joint counter classes.
+
+The main analysis asks whether these variables are linearly readable from hidden states, how the readable direction changes across layers/checkpoints, and whether irrelevant information is retained or forgotten.
+
+## Task A: Transformer Length/Noise Counting Sweep
+
+Task A is the most developed part of the synthetic Transformer plan. It tests how sequence length, bracket density, and noise affect both behavior and internal count readability.
+
+Representative settings live in [configs/generated_task_a/](configs/generated_task_a/):
+
+| Setting | Purpose |
+|---|---|
+| `clean_short` | Short clean Dyck counting baseline. |
+| `noisy_short` | Short sequence with 50% generation probability and noise. |
+| `sparse_medium` | Medium context with sparse bracket signal. |
+| `sparse_long` | Long context with sparse bracket signal. |
+| `extreme_long` | Very sparse long-context counting stress test. |
+| `tiny_extreme_long` / `sparse_len2000_*` | Sparse-supervision and bracket-density controls. |
+
+Task A helper scripts:
 
 ```bash
 python scripts/summarize_task_a_results.py
 python scripts/task_a_extra_probes.py
 python scripts/task_a_height_ablation.py
+python scripts/task_a_sparse_supervision_ablation.py
 python scripts/task_a_layerwise_activation_patch.py --from-existing
 ```
 
-跑 Dyck-(2,3) CFG next-token 实验：
-
-```bash
-python scripts/run_dyck23.py --models rnn lstm transformer --seed 0
-```
-
-## 目录结构
+These scripts write summary CSVs and figures under:
 
 ```text
-configs/                         YAML 实验配置
-configs/generated_task_a/         Task A length/noise sweep 的具体 setting
-docs/                            工作流说明和论文/笔记材料
-figures/                         脚本生成的分析图
-notebooks/                       交互式实验 notebook，详见 notebooks/README.md
-paper_figs/                      面向论文整理的图
-results/                         训练、hidden state、probe、summary 和 HTML 结果
-scripts/                         CLI 入口和 Task A 分析脚本
-src/hse/                         Python package
-tests/                           轻量 scaffold 测试
-experiment_pipeline_plan.md       通用 sufficient-statistics/compression 计划
-synthetic_transformer_experiment_plan.md  Transformer synthetic counting 计划
+results/dyck_counter_task_a_summary.csv
+results/dyck_counter_task_a_extra_probes/
+results/dyck_counter_task_a_ablation/
+results/dyck_counter_sparse_supervision_ablation/
+results/dyck_counter_task_a_activation_patch/
+figures/dyck_counter_task_a*/
 ```
 
-关键源码：
+The main interactive entry point is [notebooks/Dyck_Syn_to_Rea/Task_A_Length_Noise.ipynb](notebooks/Dyck_Syn_to_Rea/Task_A_Length_Noise.ipynb).
+
+## Repository Layout
+
+```text
+configs/                         YAML experiment configs
+configs/generated_task_a/         Concrete Task A length/noise sweep configs
+docs/                            Workflow notes and paper-related materials
+figures/                         Script-generated analysis figures
+notebooks/                       Interactive experiment notebooks
+paper_figs/                      Paper-facing exported figures
+results/                         Training outputs, hidden states, probes, summaries, HTML views
+scripts/                         CLI entry points and Task A analysis scripts
+src/hse/                         Python package
+tests/                           Lightweight scaffold tests
+experiment_pipeline_plan.md       General sufficient-statistics/compression plan
+synthetic_transformer_experiment_plan.md  Synthetic Transformer counting plan
+```
+
+Important source modules:
 
 ```text
 src/hse/models/simple.py          RNN, LSTM, Transformer, official/fallback Mamba wrappers
-src/hse/tasks/registry.py         任务注册表
+src/hse/tasks/registry.py         Task registry used by the CLI pipeline
 src/hse/tasks/dyck/               Dyck sampler, labels, metrics
 src/hse/tasks/shuffle_dyck/       Shuffle Dyck sampler and labels
 src/hse/tasks/dyck_k/             Dyck-k stack task sampler and labels
 src/hse/tasks/dyck23/             Dyck-(2,3) CFG sampler and labels
-src/hse/tasks/markov/             占位
-src/hse/tasks/needle/             占位
+src/hse/tasks/markov/             Placeholder package
+src/hse/tasks/needle/             Placeholder package
 src/hse/analysis/probes/          Ridge/logistic probes and Dyck probe helpers
-src/hse/analysis/compression/     Relevant retention / irrelevant forgetting probes
+src/hse/analysis/compression/     Relevant-retention / irrelevant-forgetting probes
 src/hse/analysis/geometry/        Probe-direction geometry checks
 src/hse/experiments/              Notebook-friendly orchestration helpers
 src/hse/utils/                    Config, IO, training, extraction utilities
 ```
 
-## Pipeline 产物约定
+## Output Layout
 
-一个标准 run 通常写到：
+A standard run is written to:
 
 ```text
 results/<experiment_name>/<model>_seed<seed>/
   config.json
   metrics.json
   checkpoints/
+    model_final.pt
+    model_best.pt
+    model_step_<step>.pt
   hidden_states/
+    final/
+      layer_<layer>.pt
+      labels.parquet
+      metadata.json
   probes/
+    layerwise_probe.csv
+    checkpoint_probe.csv
+    summary.json
+    compression_probe_rows.csv
+    directions/
 ```
 
-常见 probe 输出：
+Older notebook-oriented runs may also contain flat files such as `hidden_states.pt` and `labels.parquet` directly inside the run directory. The probe scripts handle both layouts where possible.
 
-```text
-probes/layerwise_probe.csv
-probes/checkpoint_probe.csv
-probes/summary.json
-probes/compression_probe_rows.csv
-probes/directions/
-```
+## Synthetic Transformer Plan Status
 
-Task A 的汇总和额外分析会额外写到：
-
-```text
-results/dyck_counter_task_a_summary.csv
-results/dyck_counter_task_a_extra_probes/
-results/dyck_counter_task_a_ablation/
-results/dyck_counter_task_a_activation_patch/
-figures/dyck_counter_task_a*/
-```
-
-## Synthetic Transformer plan 对照
-
-| Plan 项 | 当前落地 | 空缺 |
+| Plan item | Current implementation | Missing pieces |
 |---|---|---|
-| A. 长度和噪声如何影响 counting | Task A configs、Transformer runs、summary notebook、extra probes、height ablation、activation patching 已有 | 多 seed 主实验仍需系统补齐 |
-| B. counting feature 什么时候出现 | checkpoint 配置和 pipeline 支持已在 `dyck_counter_emergence_transformer.yaml` / `run_pipeline.py` 中准备 | `analyze_emergence.py`、`probe_emergence_step`、`behavior_emergence_step`、`verbalization_lag` 汇总还未写 |
-| C. hidden count 到输出展示 | Task A extra probes 已有部分 output-head 使用分析 | direct final count task、NUM token answer、unembedding alignment/logit lens 主线为空 |
+| A. Length and noise effects on counting | Implemented through Task A configs, Transformer runs, summary notebook, extra probes, height ablations, sparse-supervision ablations, and activation patching. | Systematic multi-seed main sweep still needs to be completed. |
+| B. Emergence of internal counting features | Config and checkpoint extraction support exist in `dyck_counter_emergence_transformer.yaml` and `run_pipeline.py`. | Dedicated `analyze_emergence.py`, `probe_emergence_step`, `behavior_emergence_step`, and `verbalization_lag` summaries are not implemented yet. |
+| C. From hidden count to output/readout | Task A extra probes include partial output-head-use analysis. | Direct final-count task, `NUM_k` answer tokens, unembedding alignment, and logit-lens count analysis are not implemented yet. |
 | D. Synthetic NIAH bridge |  |  |
 | E. CoT / reasoning-token counting |  |  |
 
-## Notebook 入口
+## Notebook Guide
 
-主要 notebook 分两组：
+The notebook inventory is maintained in [notebooks/README.md](notebooks/README.md). The main groups are:
 
-- `notebooks/Dyck_Syn_to_Rea/Task_A_Length_Noise.ipynb`：Transformer Task A 长度/噪声分析。
-- `notebooks/Dyck_Synthetic/`：Dyck、Shuffle Dyck、Dyck-k、Dyck CFG next-token 的 synthetic notebooks。
+- `notebooks/Dyck_Syn_to_Rea/`: synthetic-to-real counting experiments, currently centered on Task A.
+- `notebooks/Dyck_Synthetic/`: Dyck, Shuffle Dyck, Dyck-k, Dyck CFG, and Dyck-2 next-token notebooks.
 
-完整清单见 [notebooks/README.md](notebooks/README.md)。
+For reproducible runs, prefer the scripts. For inspection, visualization, and writing analysis, use the notebooks.
+
+## Development Notes
+
+- Use `rg` or `rg --files` to inspect files quickly.
+- Keep generated experiment artifacts under `results/`, `figures/`, or `paper_figs/`.
+- Keep new tasks registered in `src/hse/tasks/registry.py` if they should work with `scripts/run_pipeline.py`.
+- Add probe labels close to the task sampler so hidden-state extraction and probing stay reproducible.
+
+## Tests
+
+The repository currently has lightweight scaffold tests:
+
+```bash
+pytest
+```
+
+These tests check package structure rather than full experimental correctness. The primary validation for research results is the train/extract/probe workflow plus saved metrics and probe summaries.
