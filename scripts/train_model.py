@@ -10,7 +10,7 @@ if str(SRC) not in sys.path:
 import torch
 
 from hse.models import build_model
-from hse.tasks.dyck import DyckConfig, DyckSampler
+from hse.tasks.registry import build_sampler, task_name_from_experiment_config
 from hse.utils.config import load_yaml, model_specs_from_config
 from hse.utils.io import save_json
 from hse.utils.training import evaluate_causal_lm, train_causal_lm
@@ -28,12 +28,13 @@ def main() -> None:
 
     config = load_yaml(args.config)
     exp_name = config["experiment"]["name"]
-    task_config = DyckConfig(**config["task"], device=args.device)
-    sampler = DyckSampler(task_config, seed=args.seed)
+    task_name = task_name_from_experiment_config(config)
+    sampler = build_sampler(task_name, config["task"], device="cpu", seed=args.seed)
     training = config.get("training", {})
     steps = args.steps or int(training.get("steps", 10000))
     batch_size = args.batch_size or int(training.get("batch_size", 128))
     lr = float(training.get("learning_rate", 3e-4))
+    checkpoint_steps = [int(step) for step in training.get("checkpoint_steps", [])]
 
     specs = model_specs_from_config(config)
     if args.model is not None:
@@ -51,12 +52,16 @@ def main() -> None:
         save_json(
             {
                 "setting_name": exp_name,
-                "task": {**config["task"], "device": args.device},
+                "task_name": task_name,
+                "task": {**config["task"], "device": "cpu"},
                 "model_name": model_name,
                 "model": spec,
                 "seed": args.seed,
+                "training_steps": steps,
                 "batch_size": batch_size,
                 "learning_rate": lr,
+                "checkpoint_steps": checkpoint_steps,
+                "analysis": config.get("analysis", {}),
                 "device": args.device,
             },
             run_dir / "config.json",
@@ -68,6 +73,7 @@ def main() -> None:
             batch_size=batch_size,
             lr=lr,
             run_dir=run_dir,
+            checkpoint_steps=checkpoint_steps,
             device=args.device,
         )
         metrics = evaluate_causal_lm(model=model, sampler=sampler, batch_size=batch_size, device=args.device)

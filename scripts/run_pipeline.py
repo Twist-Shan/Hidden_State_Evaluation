@@ -22,6 +22,16 @@ def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
+def _module_main_cmd(module: str, script_name: str, args: list[str]) -> list[str]:
+    launcher = (
+        "import sys; "
+        f"sys.argv = ['{script_name}'] + sys.argv[1:]; "
+        f"import {module} as _script; "
+        "_script.main()"
+    )
+    return [sys.executable, "-c", launcher, *args]
+
+
 def _official_mamba_available() -> bool:
     return importlib.util.find_spec("mamba_ssm") is not None
 
@@ -69,7 +79,12 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--num-examples", type=int, default=4096)
     parser.add_argument("--extract-batch-size", type=int, default=512)
+    parser.add_argument("--checkpoint", default=None, help="Checkpoint to extract/probe. Defaults to analysis.extract_checkpoints or final.")
+    parser.add_argument("--extract-layers", default=None, help="Layer list such as -1, 0,1,2, or all.")
+    parser.add_argument("--extract-positions", default=None, choices=["all", "prefix", "dyck", "final"])
     parser.add_argument("--probe-seed", type=int, default=0)
+    parser.add_argument("--probe-max-rows", type=int, default=None)
+    parser.add_argument("--probe-max-classes", type=int, default=200)
     args = parser.parse_args()
 
     config_path = _config_path(args.config)
@@ -84,9 +99,7 @@ def main() -> None:
             run_dir = ROOT / "results" / exp_name / f"{model_name}_seed{seed}"
 
             if args.stage in {"all", "train"}:
-                train_cmd = [
-                    sys.executable,
-                    str(ROOT / "scripts" / "train_model.py"),
+                train_args = [
                     "--config",
                     str(config_path),
                     "--seed",
@@ -95,12 +108,12 @@ def main() -> None:
                     model_name,
                 ]
                 if args.device:
-                    train_cmd += ["--device", args.device]
+                    train_args += ["--device", args.device]
                 if args.steps is not None:
-                    train_cmd += ["--steps", str(args.steps)]
+                    train_args += ["--steps", str(args.steps)]
                 if args.batch_size is not None:
-                    train_cmd += ["--batch-size", str(args.batch_size)]
-                _run(train_cmd)
+                    train_args += ["--batch-size", str(args.batch_size)]
+                _run(_module_main_cmd("scripts.train_model", "train_model.py", train_args))
 
             if args.stage == "train":
                 continue
@@ -111,41 +124,118 @@ def main() -> None:
                 )
 
             if args.stage in {"all", "extract"}:
-                extract_cmd = [
-                    sys.executable,
-                    str(ROOT / "scripts" / "extract_hidden_states.py"),
-                    "--run",
-                    str(run_dir),
-                    "--num-examples",
-                    str(args.num_examples),
-                    "--batch-size",
-                    str(args.extract_batch_size),
-                ]
-                if args.device:
-                    extract_cmd += ["--device", args.device]
-                _run(extract_cmd)
+                for checkpoint in _select_extract_checkpoints(config, args.checkpoint):
+                    extract_args = [
+                        "--run",
+                        str(run_dir),
+                        "--checkpoint",
+                        checkpoint,
+                        "--extract-layers",
+                        _extract_layers(config, args.extract_layers),
+                        "--extract-positions",
+                        _extract_positions(config, args.extract_positions),
+                        "--num-examples",
+                        str(args.num_examples),
+                        "--batch-size",
+                        str(args.extract_batch_size),
+                    ]
+                    if args.device:
+                        extract_args += ["--device", args.device]
+                    _run(_module_main_cmd("scripts.extract_hidden_states", "extract_hidden_states.py", extract_args))
 
             if args.stage in {"all", "probe"}:
-                _run(
-                    [
-                        sys.executable,
-                        str(ROOT / "scripts" / "run_probes.py"),
-                        "--features",
-                        str(run_dir / "hidden_states.pt"),
-                        "--seed",
-                        str(args.probe_seed),
-                    ]
-                )
+                for checkpoint in _select_extract_checkpoints(config, args.checkpoint):
+                    _run(
+                        _probe_cmd(
+                            _features_path(run_dir, checkpoint),
+                            args.probe_seed,
+                            args.probe_max_rows,
+                            args.probe_max_classes,
+                        )
+                    )
 
             if args.stage in {"all", "geometry"}:
                 _run(
-                    [
-                        sys.executable,
-                        str(ROOT / "scripts" / "analyze_geometry.py"),
+                    _module_main_cmd(
+                        "scripts.analyze_geometry",
+                        "analyze_geometry.py",
+                        [
                         "--probe-dir",
                         str(run_dir / "probes"),
-                    ]
+                        ],
+                    )
                 )
+
+
+def _select_extract_checkpoints(config: dict, requested_checkpoint: str | None) -> list[str]:
+    if requested_checkpoint is not None:
+        return [str(requested_checkpoint)]
+    analysis = config.get("analysis", {})
+    checkpoints = analysis.get("extract_checkpoints", "final")
+    if checkpoints is None:
+        checkpoints = ["final"]
+    elif isinstance(checkpoints, (list, tuple)):
+        pass
+    elif checkpoints in {"all", "training_checkpoint_steps"}:
+        checkpoints = [*config.get("training", {}).get("checkpoint_steps", []), "final"]
+    elif isinstance(checkpoints, (str, int)):
+        checkpoints = [checkpoints]
+    seen = set()
+    out = []
+    for checkpoint in checkpoints:
+        checkpoint_str = str(checkpoint)
+        if checkpoint_str not in seen:
+            out.append(checkpoint_str)
+            seen.add(checkpoint_str)
+    return out
+
+
+def _extract_layers(config: dict, requested_layers: str | None) -> str:
+    value = requested_layers if requested_layers is not None else config.get("analysis", {}).get("extract_layers", -1)
+    if isinstance(value, list):
+        return ",".join(str(item) for item in value)
+    return str(value)
+
+
+def _extract_positions(config: dict, requested_positions: str | None) -> str:
+    return str(requested_positions or config.get("analysis", {}).get("extract_positions", "prefix"))
+
+
+def _features_path(run_dir: Path, checkpoint: str) -> Path:
+    checkpoint_name = _checkpoint_name(checkpoint)
+    canonical = run_dir / "hidden_states" / checkpoint_name
+    if canonical.exists():
+        return canonical
+    if checkpoint_name == "final":
+        return run_dir / "hidden_states.pt"
+    return canonical
+
+
+def _checkpoint_name(checkpoint: str) -> str:
+    if checkpoint == "final":
+        return "final"
+    if checkpoint == "best":
+        return "best"
+    return f"step_{int(checkpoint)}"
+
+
+def _probe_cmd(
+    features: Path,
+    seed: int,
+    max_rows: int | None,
+    max_classes: int | None,
+) -> list[str]:
+    args = [
+        "--features",
+        str(features),
+        "--seed",
+        str(seed),
+    ]
+    if max_rows is not None:
+        args += ["--max-rows", str(max_rows)]
+    if max_classes is not None:
+        args += ["--max-classes", str(max_classes)]
+    return _module_main_cmd("scripts.run_probes", "run_probes.py", args)
 
 
 if __name__ == "__main__":

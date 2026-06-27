@@ -21,7 +21,13 @@ IRRELEVANT_CLASSIFICATION_TARGETS = [
 ]
 
 
-def run_compression_probes(X, labels: pd.DataFrame, *, seed: int = 0) -> tuple[pd.DataFrame, dict[str, float]]:
+def run_compression_probes(
+    X,
+    labels: pd.DataFrame,
+    *,
+    seed: int = 0,
+    max_classes: int | None = None,
+) -> tuple[pd.DataFrame, dict[str, float]]:
     rows = []
     for target in RELEVANT_REGRESSION_TARGETS:
         if target not in labels:
@@ -32,12 +38,16 @@ def run_compression_probes(X, labels: pd.DataFrame, *, seed: int = 0) -> tuple[p
     for target in RELEVANT_CLASSIFICATION_TARGETS:
         if target not in labels or labels[target].nunique() <= 1:
             continue
+        if max_classes is not None and labels[target].nunique() > max_classes:
+            continue
         y = labels[target].to_numpy()
         out = fit_logistic_probe(X, y, seed=seed)
         rows.append(_row(target, "relevant", "logistic", out["accuracy"], normalized_accuracy(out["accuracy"], len(np.unique(y)))))
 
     for target in IRRELEVANT_CLASSIFICATION_TARGETS:
         if target not in labels or labels[target].nunique() <= 1:
+            continue
+        if max_classes is not None and labels[target].nunique() > max_classes:
             continue
         y = labels[target].to_numpy()
         out = fit_logistic_probe(X, y, seed=seed)
