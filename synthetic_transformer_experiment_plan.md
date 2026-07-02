@@ -68,89 +68,119 @@ scale-up 不是主线，只用于确认小模型发现不是 architecture-capaci
 | attention | attention mass to relevant tokens, ordered retrieval score, last-token vs occurrence-token attention distribution |
 | intervention | activation patching effect on predicted count, restore effect, count-direction steering effect |
 
-## 1. 核心实验 A：长度和噪声如何影响 counting
+## 1. 核心实验 A：长度、噪声和稀疏监督如何影响 Dyck counting
 
-### 1.1 目的
+### 1.1 当前定位
 
 对应老师 To-Do 的第一条：
 
 > Model accuracy as context becomes longer and noisier.
 
-我们要分开测两件事：
+目前核心实验 A 已经从“只看长度和噪声”推进成一个更具体的问题：
 
-1. behavior 是否因为长度和噪声下降？
-2. hidden state 中的 counting feature 是否也一起下降，还是 behavior 先掉、feature 仍然可读？
+1. Transformer 在长上下文和噪声下是否仍形成可线性读出的 Dyck counter？
+2. 如果 hidden counter 可读，为什么 next-token behavior 仍然差？
+3. 行为失败到底来自长上下文本身、Dyck token 在 loss 中过稀疏，还是 output head/readout 没有使用 counter？
+4. 线性 probe 找到的 `height` direction 是否是 forward computation 中真正可因果控制 open/close 决策的方向？
 
-如果后者成立，就支持 realistic NIAH 中的主要现象：模型内部有 count，但不会稳定展示出来。
+当前主 notebook：
 
-### 1.2 任务 A1：`DyckCounter-Scalar`
+```text
+notebooks/Dyck_Syn_to_Rea/Task_A_Length_Noise.ipynb
+```
 
-这是现有 Dyck 的系统化扩展。序列由 Dyck-1 括号和 noise token 组成，模型做 causal next-token prediction。
+当前 Dyck generator 是 stochastic Markov-style balanced path。也就是说，当 prefix 约束唯一决定下一步时是 forced step；当 open 和 close 都合法时，sampler 随机二选一，free step 的 oracle accuracy 是 0.5。因此原始 Dyck next-token accuracy 不能直接按“上限 1.0”解释，必须拆成 forced/free。
 
-需要记录每个 prefix 的标签：
+### 1.2 已完成的 Task A 设置
 
-- `left`: 已见 `(` 数量。
-- `right`: 已见 `)` 数量。
-- `height = left - right`。
-- `dyck_index`: 当前是第几个括号 token，不算 noise。
-- `is_noise_prefix_ratio`: prefix 中 noise 比例。
-- `legal_next_class`: 下一步合法 token 类型。
+所有模型固定为 3-layer decoder-only Transformer，seed=0，训练 15000 steps，final checkpoint 抽取 all layers / all positions hidden states。
 
-参数网格：
+第一批 length/noise sweep 已完成：
 
-| factor | values |
+| setting | Dyck tokens | seq_len | noise vocab | 目的 |
+|---|---:|---:|---:|---|
+| `clean_short` | 48 | 48 | 4 | 无稀疏噪声，最简单 Dyck counter |
+| `noisy_short` | 48 | 120 | 16 | 短序列加噪声 |
+| `sparse_medium` | 200 | 400 | 16 | 中等稀疏 |
+| `sparse_long` | 400 | 1000 | 16 | 长上下文 |
+| `extreme_long` | 400 | 2000 | 64 | 长上下文 + 大 noise vocab |
+| `tiny_extreme_long` | 20 | 2000 | 64 | 极端稀疏 Dyck supervision control |
+
+之后固定 `seq_len=2000` 和 `noise_vocab=64`，做了 sparse-supervision ladder：
+
+```text
+bracket tokens = [20, 24, 28, 32, 34, 36, 40, 44, 48, 56, 64, 80, 100, 200, 400]
+```
+
+注意：当前 balanced Dyck generator 要求括号 token 总数为偶数，所以 33/35 没有直接运行；用 34 补在转折区间里。
+
+### 1.3 已完成的分析和 probe
+
+Task A 当前不只看 `Dyck acc`，而是记录以下指标：
+
+| 指标 | 含义 |
 |---|---|
-| bracket pairs | `[24, 100, 200]` |
-| bracket tokens | `[48, 200, 400]` |
-| context length | `[48, 120, 400, 1000, 2000]` |
-| repeat/generation prob | `[1.0, 0.5, 0.25, 0.1]` |
-| noise vocab size | `[4, 16, 64]` |
-| train steps | `15000` main, `30000` for hard cases |
-| seeds | `[0, 1, 2]` |
+| `Dyck acc` | 下一个 token 是 Dyck bracket 时的 next-token accuracy |
+| `oracle acc` | 当前 stochastic generator 的 Bayes/oracle baseline；forced=1，free=0.5 |
+| `forced acc` | 当前 prefix 已唯一决定 open/close 时的模型 accuracy |
+| `free acc` | open/close 都合法、sampler 随机二选一时的模型 accuracy |
+| `height R2` | layerwise ridge probe 预测 `height=left-right` 的 best-layer R2 |
+| `legal-next probe` | logistic probe 预测下一步合法 token class |
 
-建议第一批不要全网格，先跑：
+已完成的 probes / interventions：
 
-| run group | pairs | context length | generation prob | noise vocab | seeds |
-|---|---:|---:|---:|---:|---|
-| clean-short | 24 | 48 | 1.0 | 4 | 0 |
-| noisy-short | 24 | 120 | 0.5 | 16 | 0 |
-| sparse-medium | 100 | 400 | 0.25 | 16 | 0 |
-| sparse-long | 200 | 1000 | 0.25 | 16 | 0 |
-| extreme-long | 200 | 2000 | 0.1 | 64 | 0 |
-
-### 1.3 分析内容
-
-每个 checkpoint、layer、position 都训练 ridge/logistic probe：
-
-| target | probe | metric |
+| probe / experiment | 目的 | 当前结论 |
 |---|---|---|
-| `left` | Ridge | `R2`, MAE |
-| `right` | Ridge | `R2`, MAE |
-| `height` | Ridge | `R2`, MAE, rounded accuracy |
-| `height_class` | Logistic | accuracy |
-| `left_right_class` | Logistic | accuracy |
-| `legal_next_class` | Logistic | accuracy |
-| noise prefix identity | Logistic or probe subset | compression leakage |
+| layerwise `left/right/height` probe | 检查 hidden 是否有 counter | 大多数 setting 中 counter 明显可读 |
+| oracle forced/free split | 区分随机 generator ceiling 和真正行为失败 | 原先五组基本贴近 oracle；`tiny_extreme_long` forced 也失败 |
+| output-head alignment | 看 height direction 是否对齐 close-open unembedding | 对齐弱，不能说明 output head 直接用该方向 |
+| direct final-hidden intervention | 沿 height direction 移动 final hidden | 对 `P(close)` 影响很小 |
+| height-direction ablation | 移除 final hidden 的 height projection | behavior/NLL 基本不变 |
+| layer-wise height-direction patch | 在中间层沿 height direction 加减并继续 forward | 斜率接近 random control，负结果 |
+| cross-condition probe transfer | 看不同 setting 的 counter 坐标是否共享 | 跨条件迁移大多很差 |
+| noise-schedule / binned diagnostics | 区分错误集中区域 | free 区域受随机上限限制，tiny sparse forced 区域也失败 |
+| cross-model activation patch | 好模型 activation patch 到坏模型 | full hidden state 有行为相关信息，但 height scalar 本身无效 |
 
-关键图：
+### 1.4 当前主要发现
 
-1. `context length x noise level -> test loss / bracket-only accuracy`。
-2. `context length x noise level -> best layer height R2`。
-3. behavior vs probe scatter：每个点是一个 run/checkpoint。
-4. `gap = height_probe_R2 - normalized_behavior_accuracy` 随长度和噪声变化。
-5. layerwise heatmap：不同 layer 在不同 count range 的 decoding quality。
+第一，原先五个 length/noise settings 的 raw Dyck accuracy 只有约 0.53-0.62，但这不是简单失败。forced/free oracle split 显示它们基本贴近当前 stochastic generator 的 oracle ceiling：forced 位置几乎全对，free 位置约 0.5。因此这些 setting 的低 raw accuracy 主要来自 generator 的随机 free step，而不是模型不会合法 Dyck。
 
-### 1.4 预期判别
+第二，`tiny_extreme_long` 是真正不同的 regime。它在 2000 长上下文里只有 20 个 bracket tokens，hidden 中仍有 counter signal（height R2 约 0.80，legal-next probe 约 0.97），但 forced accuracy 只有约 0.26，free accuracy 接近 0。这说明问题不是单纯长上下文，而是 Dyck supervision 在 next-token loss 中过稀疏，导致 output behavior 没稳定学会 bracket readout。
 
-支持 NIAH-style gap 的结果：
+第三，sparse-supervision ladder 给出更具体的阈值：
 
-- 长度/噪声增加时，next-token 或 final count accuracy 明显下降。
-- 同时 `height` 或 `left/right` probe 仍然保持较高 `R2`。
-- gap 在高噪声、长上下文、late checkpoint 中最大。
+| bracket tokens | forced behavior | free / overall behavior |
+|---:|---|---|
+| 20-32 | forced 仍明显失败，约 0.19-0.26 | free 近 0，整体很差 |
+| 34-40 | forced 快速恢复，34 约 0.45，36 约 0.60，40 约 0.78 | free 仍明显低 |
+| 56 | forced 基本恢复，约 0.93 | free 仍只有约 0.14 |
+| 64 | forced 接近满分 | free 跳到约 0.46 |
+| 80-100 | 接近 200/400 bracket 长上下文 baseline | free 稳定接近 0.5 oracle |
 
-不支持该猜想的结果：
+当前 seed=0 下，行为更像有两段转折：
 
-- behavior 下降时 probe 也同步下降，说明主要瓶颈是 representation 没形成，而不是 readout/verbalization。
+1. forced rule readout 在 34-40 bracket tokens 开始恢复。
+2. 整体 Dyck/free behavior 在 56-64 bracket tokens 接近 oracle baseline。
+
+第四，linear height probe direction 不是一个足够的 causal control knob。direct intervention、height ablation、layer-wise height-direction patch 都基本是负结果。也就是说，`height R2` 高说明 counter 可读，但不能直接推出 output head 沿这个方向执行 open/close 决策。
+
+第五，cross-model activation patch 补充了另一面：完整 final-layer hidden state 确实包含行为相关信息。把好模型 final-layer full activation patch 到坏模型后，forced acc 会明显改善，例如：
+
+| patch | recipient forced baseline | patched forced |
+|---|---:|---:|
+| `b100 -> b20`, L2 full-state | 0.302 | 0.895 |
+| `b100 -> b34`, L2 full-state | 0.417 | 0.944 |
+| `b64 -> b34`, L2 full-state | 0.475 | 0.864 |
+
+但只替换 height scalar 基本无效。donor-bank retrieval full-state patch 也能改善坏 recipient，不过 state-random retrieval 经常和 matched retrieval 一样强，说明当前证据更像是“donor-like activation distribution 有用”，还不能证明“逐样本语义匹配的 counter state 被成功移植”。
+
+### 1.5 当前解释
+
+Task A 当前支持一个更细的 story：
+
+> Transformer 可以形成可线性读出的 Dyck counter；在多数非极端设置中，它也基本掌握 forced legal transition。但当 Dyck token 在 2000 长上下文中极端稀疏时，counter 虽然可读，output behavior 仍然失败。这个失败主要不是 `height` scalar 不存在，而是完整 hidden state / output readout / activation distribution 没有进入可稳定预测 bracket 的 regime。
+
+这和 realistic NIAH 的目标故事一致：内部 representation 和最终可展示答案之间存在 gap；但 Task A 也提醒我们，不能把任意高 probe score 直接解释成模型有一个可因果控制的“计数变量”。
 
 ## 2. 核心实验 B：counting feature 什么时候出现
 

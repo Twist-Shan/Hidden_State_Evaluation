@@ -34,6 +34,7 @@ def main() -> None:
     steps = args.steps or int(training.get("steps", 10000))
     batch_size = args.batch_size or int(training.get("batch_size", 128))
     lr = float(training.get("learning_rate", 3e-4))
+    eval_every = int(training.get("eval_every", 200))
     checkpoint_steps = [int(step) for step in training.get("checkpoint_steps", [])]
 
     specs = model_specs_from_config(config)
@@ -60,6 +61,7 @@ def main() -> None:
                 "training_steps": steps,
                 "batch_size": batch_size,
                 "learning_rate": lr,
+                "eval_every": eval_every,
                 "checkpoint_steps": checkpoint_steps,
                 "analysis": config.get("analysis", {}),
                 "device": args.device,
@@ -72,6 +74,7 @@ def main() -> None:
             steps=steps,
             batch_size=batch_size,
             lr=lr,
+            eval_every=eval_every,
             run_dir=run_dir,
             checkpoint_steps=checkpoint_steps,
             device=args.device,

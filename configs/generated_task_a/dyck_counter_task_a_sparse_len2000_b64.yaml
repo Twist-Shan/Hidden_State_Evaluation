@@ -1,0 +1,46 @@
+experiment:
+  name: dyck_counter_task_a_sparse_len2000_b64
+  task: dyck
+  seeds:
+  - 0
+task:
+  dyck_pairs: 32
+  total_length: 64
+  seq_len: 2000
+  repeat_prob: 0.032
+  num_noise_tokens: 64
+  n_tasks: 512
+  prefix_probe_max_len: 64
+training:
+  steps: 15000
+  batch_size: 4
+  optimizer: adamw
+  learning_rate: 0.0003
+  checkpoint_steps: []
+models:
+- name: transformer
+  layers: 3
+  emb_dim: 128
+  hidden_dim: 128
+  n_heads: 4
+  ffn_dim: 512
+  dropout: 0.0
+  max_positions: 2048
+  state_kind: h
+analysis:
+  extract_layers: all
+  extract_positions: all
+  extract_checkpoints:
+  - final
+  probes:
+    ridge_targets:
+    - left
+    - right
+    - height
+    logistic_targets:
+    - height_class
+    - left_right_class
+    - legal_next_class
+    balance_by: height
+  geometry:
+    check_height_equals_left_minus_right: true

@@ -36,32 +36,28 @@ from scripts.task_a_extra_probes import (
 
 OUT_DIR = ROOT / "results" / "dyck_counter_sparse_supervision_ablation"
 FIG_DIR = ROOT / "figures" / "dyck_counter_sparse_supervision_ablation"
-RUNS = [
-    {
-        "setting": "b20",
-        "bracket_tokens": 20,
-        "source": "tiny_extreme_long",
-        "run_dir": ROOT / "results" / "dyck_counter_task_a_tiny_extreme_long" / "transformer_seed0",
-    },
-    {
-        "setting": "b48",
-        "bracket_tokens": 48,
-        "source": "sparse_len2000_b48",
-        "run_dir": ROOT / "results" / "dyck_counter_task_a_sparse_len2000_b48" / "transformer_seed0",
-    },
-    {
-        "setting": "b200",
-        "bracket_tokens": 200,
-        "source": "sparse_len2000_b200",
-        "run_dir": ROOT / "results" / "dyck_counter_task_a_sparse_len2000_b200" / "transformer_seed0",
-    },
-    {
-        "setting": "b400",
-        "bracket_tokens": 400,
-        "source": "extreme_long",
-        "run_dir": ROOT / "results" / "dyck_counter_task_a_extreme_long" / "transformer_seed0",
-    },
-]
+BRACKET_SWEEP = [20, 24, 28, 32, 34, 36, 40, 44, 48, 56, 64, 80, 100, 200, 400]
+
+
+def run_spec(bracket_tokens: int) -> dict:
+    if bracket_tokens == 20:
+        source = "tiny_extreme_long"
+        run_dir = ROOT / "results" / "dyck_counter_task_a_tiny_extreme_long" / "transformer_seed0"
+    elif bracket_tokens == 400:
+        source = "extreme_long"
+        run_dir = ROOT / "results" / "dyck_counter_task_a_extreme_long" / "transformer_seed0"
+    else:
+        source = f"sparse_len2000_b{bracket_tokens}"
+        run_dir = ROOT / "results" / f"dyck_counter_task_a_sparse_len2000_b{bracket_tokens}" / "transformer_seed0"
+    return {
+        "setting": f"b{bracket_tokens}",
+        "bracket_tokens": bracket_tokens,
+        "source": source,
+        "run_dir": run_dir,
+    }
+
+
+RUNS = [run_spec(bracket_tokens) for bracket_tokens in BRACKET_SWEEP]
 
 
 def main() -> None:
@@ -71,12 +67,25 @@ def main() -> None:
     oracle_rows = []
     layerwise_rows = []
     for spec in RUNS:
+        run_dir = Path(spec["run_dir"])
+        required = [
+            run_dir / "config.json",
+            run_dir / "metrics.json",
+            run_dir / "hidden_states" / "final" / "labels.parquet",
+            run_dir / "probes" / "layerwise_probe.csv",
+        ]
+        if not all(path.exists() for path in required):
+            missing = [path.name for path in required if not path.exists()]
+            print(f"skip {spec['setting']}: missing {missing}")
+            continue
         run_summary, run_oracle, run_layerwise = collect_run(spec)
         summary_rows.append(run_summary)
         oracle_rows.extend(run_oracle)
         layerwise_rows.append(run_layerwise)
         gc.collect()
 
+    if not summary_rows:
+        raise RuntimeError("No complete sparse-supervision runs found.")
     summary = pd.DataFrame(summary_rows).sort_values("bracket_tokens").reset_index(drop=True)
     oracle = pd.DataFrame(oracle_rows).sort_values(["bracket_tokens", "split"]).reset_index(drop=True)
     layerwise = pd.concat(layerwise_rows, ignore_index=True).sort_values(["bracket_tokens", "layer"]).reset_index(drop=True)
@@ -171,7 +180,7 @@ def collect_run(spec: dict) -> tuple[dict, list[dict], pd.DataFrame]:
 
 
 def plot_sparse_ablation(summary: pd.DataFrame, oracle: pd.DataFrame, layerwise: pd.DataFrame) -> Path:
-    fig, axes = plt.subplots(1, 3, figsize=(16, 4.6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 3, figsize=(17, 6.0), constrained_layout=True)
     x = summary["bracket_tokens"].to_numpy()
 
     axes[0].plot(x, summary["all_dyck_targets_model_acc"], marker="o", label="Dyck acc on extracted sample", color="#2563eb")
